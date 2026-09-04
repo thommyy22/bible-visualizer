@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bible Explorer</title>
+    <!-- Setzt das Theme SYNCHRON vor dem ersten Rendern, bevor script.js
+         (das erst am Ende von <body> laedt) ueberhaupt zum Zug kommt -
+         sonst wuerde beim Laden kurz das falsche Theme aufblitzen. Der
+         Schluessel "bible-explorer-theme" muss mit THEME_STORAGE_KEY in
+         script.js uebereinstimmen. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("bible-explorer-theme");
+          var prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.dataset.theme =
+            stored || (prefersDark ? "dark" : "light");
+        } catch (e) {
+          // localStorage kann z. B. im privaten Modus fehlschlagen -
+          // Light Mode als sicherer Standard, kein Absturz.
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="style.css" />
+    <!-- MapLibre GL JS fuer die "Karte"-Ansicht (s. mapView.js-Abschnitt
+         in script.js). Lokal mitgeliefert (flach im selben Ordner, wie
+         alle uebrigen Dateien) statt per CDN - nur die KACHELN kommen zur
+         Laufzeit von tiles.openfreemap.org. Als klassisches UMD-Bundle
+         eingebunden und damit als globales `maplibregl` verfuegbar; muss
+         deshalb VOR script.js stehen. Ersetzt die frueheren Three.js-/
+         OrbitControls-Einbindungen samt Import-Map (die selbst gebaute
+         3D-Kugel ist der echten Vektor-Karte gewichen). -->
+    <link rel="stylesheet" href="maplibre-gl.css" />
+    <script src="maplibre-gl.js"></script>
+  </head>
+  <body>
+    <!-- ============ LADEBILDSCHIRM ============
+         Steht bewusst direkt im HTML (nicht per JS erzeugt): so ist er
+         schon sichtbar, BEVOR script.js ueberhaupt geladen ist - genau
+         waehrend der Wartezeit, die er ueberbruecken soll. Das Ausblenden
+         uebernimmt init() am Ende (s. hideAppLoader). -->
+    <div class="app-loader" id="app-loader">
+      <div class="app-loader-inner">
+<!-- Die Bogenform kommt zurueck aus SVG: nur so laufen die Enden
+             wie in der echten Visualisierung auf eine gemeinsame
+             Grundlinie zu. Ein Zwischenversuch mit CSS-Kreisausschnitten
+             ergab konzentrische Kappen, die eher an ein WLAN-Symbol
+             erinnerten.
+
+             Animiert wird trotzdem NICHT stroke-dashoffset (das laeuft auf
+             dem Haupt-Thread und stockte, waehrend die XML geparst wird),
+             sondern ausschliesslich die Deckkraft - eine Welle, die von
+             aussen nach innen laeuft. Die Pfade selbst bleiben unveraendert
+             stehen. -->
+        <svg class="app-loader-arcs" viewBox="0 0 320 96" aria-hidden="true">
+          <path d="M 12,88 Q 160,-28 308,88" />
+          <path d="M 50,88 Q 160,4 270,88" />
+          <path d="M 88,88 Q 160,32 232,88" />
+          <path d="M 126,88 Q 160,58 194,88" />
+        </svg>
+        <span class="app-loader-title">Bible Explorer</span>
+      </div>
+    </div>
+
+    <!-- ============ NAVBAR ============ -->
+    <header class="navbar">
+      <div class="navbar-brand">
+        <span class="navbar-title">Bible Explorer</span>
+      </div>
+
+      <div class="navbar-center">
+        <button
+          class="icon-button"
+          id="info-button"
+          title="Info zur Visualisierung"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <line x1="12" y1="11" x2="12" y2="16" stroke-linecap="round" />
+            <circle
+              cx="12"
+              cy="7.6"
+              r="0.9"
+              fill="currentColor"
+              stroke="none"
+            />
+          </svg>
+        </button>
+
+        <button class="icon-button" id="home-button" title="Startansicht">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <path
+              d="M3 11.5 12 4l9 7.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+
+        <div class="search-bar">
+          <svg
+            class="search-icon"
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" stroke-linecap="round" />
+          </svg>
+          <input
+            type="text"
+            id="reference-search"
+            placeholder="z.B. Jesaja 54"
+          />
+          <span class="search-divider"></span>
+          <span class="search-translation">ZÜR</span>
+          <span class="search-feedback" id="search-feedback" hidden></span>
+        </div>
+
+        <button
+          class="theme-toggle"
+          id="theme-toggle"
+          type="button"
+          title="Dark Mode umschalten"
+          aria-pressed="false"
+        >
+          <span class="theme-toggle-thumb">
+            <svg
+              class="theme-toggle-icon theme-toggle-icon-sun"
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"
+                stroke-linecap="round"
+              />
+            </svg>
+            <svg
+              class="theme-toggle-icon theme-toggle-icon-moon"
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <button class="profile-avatar" title="Profil"></button>
+    </header>
+
+    <!-- ============ MAIN LAYOUT ============ -->
+    <div class="dashboard">
+      <!-- Linke Box: Suche / Filter (folgt später) -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <button
+            class="sidebar-toggle"
+            id="sidebar-toggle"
+            title="Ein-/Ausklappen"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M9 6l6 6-6 6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div class="sidebar-content">
+          <div class="word-explorer" id="word-explorer">
+            <div
+              class="word-category-control"
+              id="word-category-control"
+              role="tablist"
+              aria-label="Kategorie"
+            >
+              <button
+                class="word-category-option is-active"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                data-category="persons"
+              >
+                Personen
+              </button>
+              <button
+                class="word-category-option"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-category="places"
+              >
+                Orte
+              </button>
+              <button
+                class="word-category-option"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-category="times"
+              >
+                Zeiten
+              </button>
+              <button
+                class="word-category-option"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-category="words"
+              >
+                Wörter
+              </button>
+            </div>
+
+            <!-- Nur sichtbar, wenn die Kategorie "Wörter" aktiv ist (s.
+                 wireWordExplorer in script.js) - Toggle-Chips fuer die
+                 Wortart-Filterung. Inhalt wird dynamisch aus den in
+                 wordReferenceIndex.json tatsaechlich vorkommenden
+                 Wortarten aufgebaut, Standard: nur Nomen/Adjektive/Verben
+                 aktiv. -->
+            <div class="word-pos-filter" id="word-pos-filter" hidden></div>
+
+            <div class="word-search-bar">
+              <svg
+                class="search-icon"
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" stroke-linecap="round" />
+              </svg>
+              <input
+                type="text"
+                id="word-search-input"
+                placeholder="Namen durchsuchen…"
+              />
+              <!-- Loescht den Suchtext. Nur sichtbar, solange ueberhaupt
+                   etwas eingegeben ist (s. wireWordExplorer). -->
+              <button
+                class="word-search-clear"
+                id="word-search-clear"
+                type="button"
+                title="Suche löschen"
+                hidden
+              >
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="word-list" id="word-list"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Rechte grosse Box: Visualizer -->
+      <main class="visualizer-panel">
+        <!-- Oberer Teil: nur die Visualisierung, fix, eigenständig -->
+        <div class="visualizer-canvas" id="visualizer-canvas">
+          <div class="zoom-viewport" id="zoom-viewport">
+            <div id="bible-container"></div>
+          </div>
+
+          <!-- Grid-Ansicht (Alternative zur Bogen-Ansicht, s.
+               vis-mode-picker) - alle Kapitel als gleich grosse Quadrate,
+               Gen 1 oben links, letztes Offenbarung-Kapitel unten rechts.
+               Eigenstaendiges Geschwister von .zoom-viewport statt Teil
+               davon: die Grid-Ansicht nimmt (bewusst, s. Anfrage) NICHT am
+               Zoom/Pan-System teil, braucht daher keinen eigenen
+               "Fenster"-Clip-Mechanismus wie .zoom-viewport ihn fuer
+               #bible-container bereitstellt. -->
+          <div class="grid-viewport" id="grid-viewport" hidden>
+            <div id="chapter-grid"></div>
+          </div>
+
+          <!-- Karte-Ansicht (dritter Modus, s. vis-mode-picker) - WebGL-
+               3D-Globe mit Orts-Markern (Three.js, s. script.js
+               createGlobeView). Ebenfalls ein eigenstaendiges Geschwister
+               von .zoom-viewport/.grid-viewport, aus demselben Grund wie
+               dort: eigenes Interaktionsmodell (Drag-Rotate/Scroll-Zoom
+               per OrbitControls), das nicht am CSS-zoom-System der
+               Boegen-Ansicht teilnehmen soll. #globe-canvas-container ist
+               der Mount-Punkt, in den script.js das WebGL-<canvas>
+               einhaengt (nicht direkt im HTML, da Three.js es selbst
+               erzeugt). -->
+          <div class="map-viewport" id="map-viewport" hidden>
+            <div id="globe-canvas-container"></div>
+          </div>
+
+          <!-- Onboarding: scroll-getriebene Erklaerung der Visualisierung.
+               #info-panel ist der Scroll-Container (overflow-y:auto), .ob-stage
+               bleibt per position:sticky stehen, waehrend die Text-Abschnitte
+               daran vorbeiscrollen - klassisches Scrollytelling. Hoehen von
+               Stage und Abschnitten setzt script.js, da sie sich nach der
+               (variablen) Panel-Hoehe richten. -->
+          <div class="info-panel" id="info-panel" hidden>
+            <div class="ob-root" id="ob-root">
+              <div class="ob-stage" id="ob-stage">
+                <div class="ob-intro" id="ob-intro">
+                  <span class="ob-intro-title">Bible Explorer</span>
+                  <span class="ob-intro-hint">
+                    Scrollen
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14M6 13l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                </div>
+                <svg class="ob-arcs" id="ob-arcs" aria-hidden="true"></svg>
+                <div class="ob-bars" id="ob-bars" aria-hidden="true"></div>
+                <!-- Ebenen fuer die spaeteren Schritte. Sie liegen dauerhaft
+                     im DOM und werden nur ein-/ausgeblendet - Aufbauen erst
+                     beim Erreichen des Schritts waere mitten im Scrollen
+                     sichtbar geruckelt. -->
+                <div class="ob-pins" id="ob-pins" aria-hidden="true"></div>
+                <div class="ob-combos" id="ob-combos" aria-hidden="true"></div>
+                <div class="ob-globe" id="ob-globe" aria-hidden="true">
+                  <div class="ob-globe-ball"></div>
+                </div>
+              </div>
+
+              <section class="ob-step" data-step="0"></section>
+
+              <section class="ob-step" data-step="1">
+                <div class="ob-card">
+                  <h3>Jedes Kapitel ein Balken</h3>
+                  <p>
+                    Die Zürcher Bibel 1931 umfasst 66 Bücher mit insgesamt 1189
+                    Kapiteln. Hier steht jedes einzelne davon als schmaler Balken –
+                    von Genesis 1 ganz links bis zum letzten Kapitel der
+                    Offenbarung ganz rechts.
+                  </p>
+                </div>
+              </section>
+
+              <section class="ob-step" data-step="2">
+                <div class="ob-card">
+                  <h3>Die Höhe zeigt die Länge</h3>
+                  <p>
+                    Jetzt wächst jeder Balken auf die Anzahl seiner Verse. Psalm 119
+                    ragt mit 176 Versen weit heraus, Psalm 117 bleibt mit zwei
+                    Versen fast unsichtbar. Auf einen Blick wird sichtbar, wie
+                    ungleich die Kapitel verteilt sind.
+                  </p>
+                </div>
+              </section>
+
+              <section class="ob-step" data-step="3">
+                <div class="ob-card">
+                  <h3>Querverweise verbinden Stellen</h3>
+                  <p>
+                    Im Text stehen Fussnoten, die auf verwandte Stellen zeigen. In
+                    Jesaja 54:9 heisst es: <em>„Gleich den Tagen Noahs ist mir diese
+                    Zeit: wie ich geschworen, dass die Wasser Noahs nicht mehr über
+                    die Erde kommen sollen…“</em> – mit einem Verweis auf
+                    Genesis 9:11, wo Gott nach der Sintflut verspricht, dass
+                    <em>„niemals wieder eine Sintflut kommen soll“</em>.
+                  </p>
+                  <p>Ein solcher Verweis wird als Bogen zwischen beiden Kapiteln gezeichnet.</p>
+                </div>
+              </section>
+
+              <section class="ob-step" data-step="4">
+                <div class="ob-card">
+                  <h3>Ein ganzes Netz</h3>
+                  <p>
+                    So verweist die Bibel tausendfach auf sich selbst. Über 10 000
+                    solcher Verbindungen durchziehen den Text – quer durch die
+                    Bücher, oft über Jahrhunderte der Entstehung hinweg.
+                  </p>
+                </div>
+              </section>
+
+              <section class="ob-step" data-step="5">
+                <div class="ob-card">
+                  <h3>Ein anderer Blickwinkel</h3>
+                  <p>
+                    Dieselben 1189 Kapitel lassen sich auch anders anordnen: als
+                    Raster, in dem jedes Kapitel ein gleich grosses Quadrat ist –
+                    Genesis 1 oben links, das letzte Kapitel der Offenbarung unten
+                    rechts. Oben links in der Ecke wechselst du die Darstellung.
+                  </p>
+                </div>
+              </section>
+
+              <section class="ob-step" data-step="6">
+                <div class="ob-card">
+                  <h3>Filtern nach dem, was dich interessiert</h3>
+                  <p>
+                    In der linken Box findest du vier Kategorien: <strong>Personen</strong>,
+                    <strong>Orte</strong>, <strong>Zeiten</strong> und <strong>Wörter</strong>.
+                    Was du dort anheftest, färbt genau die Kapitel ein, in denen es
+                    vorkommt.
+                  </p>
+                </div>
+              </section>
+
+              <section class="ob-step" data-step="7">
+                <div class="ob-card">
+                  <h3>Wo sich Dinge treffen</h3>
+                  <p>
+                    Bis zu vier Einträge gleichzeitig – jeder bekommt eine eigene
+                    Farbe. Kommen mehrere im selben Kapitel vor, mischen sich ihre
+                    Farben zu einem dunkleren Ton. So springen genau die Stellen
+                    ins Auge, an denen sich mehrere Spuren kreuzen.
+                  </p>
+                </div>
+              </section>
+
+              <section class="ob-step" data-step="8">
+                <div class="ob-card">
+                  <h3>Leg los</h3>
+                  <p>
+                    Such dir eine Person, einen Ort, einen Zeitausdruck oder ein
+                    Wort – und schau, welches Muster dabei herauskommt.
+                  </p>
+                </div>
+              </section>
+
+              <section class="ob-step" data-step="9">
+                <div class="ob-card">
+                  <h3>Oder schau auf die Karte</h3>
+                  <p>
+                    926 biblische Orte sind geografisch verortet. Auf der Karte
+                    siehst du, welche von ihnen durch Querverweise miteinander
+                    verbunden sind – ein Netz, das sich von Tarschisch bis Babel
+                    spannt.
+                  </p>
+                  <button class="ob-finish" id="ob-finish" type="button">
+                    Zur Visualisierung
+                  </button>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <!-- Darstellungs-Umschalter: Pill-Segmented-Control, exakt
+               dieselbe Optik/Mechanik wie die Kategorie-Auswahl in der
+               Sidebar (.word-category-control). Ersetzt das fruehere
+               Dropdown - bei nur drei Optionen ist ein Klick statt zwei
+               (oeffnen + waehlen) die bessere Wahl, und der aktive Modus
+               ist ohne Aufklappen ablesbar. -->
+          <div
+            class="vis-mode-control"
+            id="vis-mode-control"
+            role="tablist"
+            aria-label="Darstellung"
+          >
+            <button
+              class="vis-mode-option is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              data-vis-mode="arc"
+            >
+              Arc
+            </button>
+            <button
+              class="vis-mode-option"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-vis-mode="grid"
+            >
+              Grid
+            </button>
+            <button
+              class="vis-mode-option"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-vis-mode="map"
+            >
+              Map
+            </button>
+          </div>
+
+          <!-- Bogenfarben: nur noch zwei Optionen (Pastell entfaellt), als
+               zweiter Pill-Switch rechts neben dem Darstellungs-Umschalter.
+               Nur in der Arc-Ansicht sichtbar - Grid und Karte haben keine
+               Boegen, dort waere der Schalter wirkungslos (s. setVisMode). -->
+          <div
+            class="arc-palette-control"
+            id="arc-palette-control"
+            role="tablist"
+            aria-label="Bogenfarben"
+          >
+            <button
+              class="arc-palette-option is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              data-palette="neon"
+            >
+              Neon
+            </button>
+            <button
+              class="arc-palette-option"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-palette="monochrome"
+            >
+              Monochrom
+            </button>
+          </div>
+
+          <button
+            class="reset-button"
+            id="reset-button"
+            title="Zurück zur Übersicht"
+            hidden
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M6 6l12 12M18 6L6 18"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+
+          <div class="canvas-footer">
+            <div class="version-label">
+              <strong>Zürcher Bibel 1931</strong>
+              <span>von Zefania XML</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Draggable Trenner: passt Höhe von Visualisierung/Info-Bereich an -->
+        <div class="panel-divider" id="panel-divider" title="Höhe anpassen">
+          <span class="panel-divider-grip">
+            <svg
+              viewBox="0 0 24 24"
+              width="12"
+              height="12"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M12 5v14M8 9l4-4 4 4M8 15l4 4 4-4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+        </div>
+
+        <!-- Unterer Teil: erscheint erst bei Kapitel-/Crossref-Auswahl, eigenständig scrollbar -->
+        <div class="lower-pane" id="lower-pane" hidden>
+          <div class="reference-strip" id="reference-strip">
+            <span class="reference-strip-label" id="reference-strip-label"
+              >—</span
+            >
+          </div>
+
+          <!-- Einzelansicht (ein Kapitel) -->
+          <div class="content-area" id="content-area">
+            <div id="chapter-text" class="chapter-text"></div>
+          </div>
+
+          <!-- Split-Ansicht (Querverweis), zwei unabhängig scrollbare Spalten -->
+          <div class="split-view" id="split-view" hidden>
+            <div class="split-side" id="split-side-left"></div>
+            <div class="split-side" id="split-side-right"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

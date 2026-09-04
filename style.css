@@ -1,0 +1,2450 @@
+:root {
+  --bar-width: 0.5px;
+  --color-a: #9c9c9c;
+  --color-b: #333333;
+
+  /* 6 Farbstopps fuer den Bogen-Verlauf (kurze -> lange Distanz), von
+     script.js per t (0..1) durchlaufen (s. interpolateMultiStopColor).
+     -1 und -6 sind eure bisherigen --arc-color-min/-max-Werte, unveraendert
+     uebernommen; -2 bis -5 sind 4 neue Zwischenfarben, die per
+     HSL-Interpolation zwischen diesen beiden Endpunkten berechnet wurden
+     (gleicher Alpha-Kanal ~18% durchgehend, nur der Farbton aendert sich -
+     Rosa -> Rose -> Koralle -> Orange -> Gelbgruen -> Gruen). Alle 6 als
+     8-stelliges Hex mit Alpha (RRGGBBAA) - hexToRgba() in script.js liest
+     das jetzt korrekt (s. Kommentar dort zum vorherigen 6-stelligen Bug). */
+  --arc-color-1: #aaf0f66b;
+  --arc-color-2: #f58abc82;
+  --arc-color-3: #f6766a7d;
+  --arc-color-4: #f8b8487f;
+  --arc-color-5: #d7fb246a;
+  --arc-color-6: #48ff006a;
+
+  --border-color: #e7e7e7;
+  --text-muted: #b9b9b9;
+  --text-soft: #9a9a9a;
+  --text-body: #3d3d3d;
+  /* NEU: formalisiert die zuvor an mehreren Stellen hartkodierte
+     Ueberschriften-/Icon-Farbe #1a1a1a als Variable, damit sie im Dark
+     Mode mitgehen kann. */
+  --text-heading: #1a1a1a;
+
+  /* NEU: --bg-page (Seite) und --bg-surface (Karten: Sidebar, Visualizer-
+     Panel, Info-Bereich, kleine Buttons/Chips) sind jetzt zwei
+     unterschiedliche Toene statt beide reinweiss - dadurch heben sich die
+     bordered Boxen sichtbar vom Hintergrund ab, ohne dass es zusaetzliche
+     Schatten braucht. --bg-subtle ist fuer randlose, gefuellte Flaechen
+     wie den Profil-Avatar-Platzhalter. */
+  --bg-page: #f2f1ee;
+  --bg-surface: #ffffff;
+  --bg-subtle: #eeecea;
+
+  /* NEU: eine einzige Akzentfarbe fuer alle drei "aktiv/ausgewaehlt"-
+     Zustaende (Balken, Boegen, Chips) statt bisher teils hartkodiertem
+     "red" (Balken/Boegen) und teils schon #e5484d (Chips) gemischt -
+     dadurch wirken alle drei jetzt wie EIN Zustand, nicht drei
+     verschiedene. script.js liest --accent live per getComputedStyle beim
+     Zeichnen der Boegen (s. readAccentColor) - dadurch wirkt sich ein
+     Theme-Wechsel sofort auch auf die aktive Bogenfarbe aus. */
+  --accent: #e5484d;
+  --accent-bg: #fdeceb;
+
+  /* NEU: Farbpalette fuer bis zu 4 gleichzeitig angepinnte Personen in
+     der Word-Box (s. GERMAN_PERSON_NAME_ALIASES/PERSON_COLOR_VARS in
+     script.js). Slot 1 ist bewusst IDENTISCH mit --accent/--accent-bg
+     (nicht eine fuenfte, separate Rot-Definition) - die "erste
+     angepinnte Person" soll optisch dasselbe Rot sein, das die App
+     bereits fuer "aktiv/ausgewaehlt" verwendet (Balken, Boegen, Chips),
+     nicht ein zweites, leicht abweichendes Rot. Slots 2-4 sind neue,
+     bewusst klar unterscheidbare Toene (Violett/Blau/Gruen) mit
+     jeweils einer Hell-Variante (-bg) im selben Aufbau wie --accent-bg,
+     fuer Pill-Hintergruende in Sidebar und Kapiteltext. */
+  --person-color-1: var(--accent);
+  --person-color-1-bg: var(--accent-bg);
+  --person-color-2: #8b5cf6;
+  --person-color-2-bg: #f1ebfd;
+  --person-color-3: #3b82f6;
+  --person-color-3-bg: #eaf1fe;
+  --person-color-4: #22c55e;
+  --person-color-4-bg: #e9f9ee;
+
+  /* NEU: als Variable ausgelagert, damit der Schatten im Dark Mode
+     angepasst werden kann - ein schwarzer 8%-Schatten waere auf dunklem
+     Grund praktisch unsichtbar. */
+  --panel-shadow: 0 -12px 24px -12px rgba(0, 0, 0, 0.08);
+
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* ---- Layout -----------------------------------------------------
+     --chrome-height: Platzbedarf von Navbar + unterem Dashboard-Padding.
+       Wird von script.js aus der tatsaechlich gerenderten Navbar-Hoehe
+       berechnet - der Wert unten ist nur ein Fallback vor dem ersten
+       JS-Lauf.
+
+     --bible-padding: reservierter Freiraum oben in #bible-container fuer
+       die Bogenwoelbung (Bogenhoehe + Puffer). Wird von script.js aus der
+       Canvas-Hoehe berechnet, die jetzt in allen drei Ansichtszustaenden
+       identisch ist (Idle, Kapitel, Split) - der Info-Bereich ist ein
+       eigenstaendiges Overlay, das die Visualisierung nicht mehr staucht.
+
+     --lower-pane-height: Hoehe des Info-Bereich-OVERLAYS (Kapiteltext /
+       Split-View). Der Info-Bereich ist KEIN Flex-Nachbar der
+       Visualisierung mehr, sondern liegt als eigenstaendiges Overlay UEBER
+       dem Canvas (position:absolute, siehe .lower-pane unten). Dadurch
+       bekommen Canvas-Hoehe und Info-Bereich-Hoehe ihre Zielwerte
+       UNABHAENGIG voneinander (statt sich einen gemeinsamen Platz teilen
+       zu muessen) und duerfen sich bewusst ueberlappen. Wird von script.js
+       gesetzt (computeLowerPaneHeight) bzw. beim manuellen Ziehen am
+       Trenner direkt aktualisiert. */
+  --chrome-height: 104px;
+  --bible-padding: 260px;
+  --lower-pane-height: 220px;
+  --divider-height: 13px;
+}
+
+/* ---- Dark Mode ----------------------------------------------------
+   Wird durch data-theme="dark" auf <html> aktiviert (per Toggle rechts
+   neben der Suchleiste, s. .theme-toggle weiter unten). Ueberschreibt
+   ausschliesslich Farbwerte - Layout/Abstaende/Radien bleiben identisch,
+   da sie keine Helligkeits-Abhaengigkeit haben. [data-theme="dark"] und
+   :root haben GLEICHE Spezifitaet (beide zielen letztlich auf <html>) -
+   dieser Block muss deshalb im Quelltext NACH :root stehen, damit er bei
+   Gleichstand gewinnt.
+
+   Balken (--color-a/-b): im Light Mode ein mittleres und ein sehr
+   dunkles Grau. #333333 waere auf dunklem Hintergrund praktisch
+   unsichtbar, deshalb hier stattdessen ein mittleres und ein helles Grau -
+   das "zwei abwechselnde Toene"-Prinzip bleibt erhalten, nur invertiert.
+
+   Bogenfarben (--arc-color-*): bewusst UNVERAENDERT gelassen. Die Alpha-
+   Werte (~40-50%) sorgen dafuer, dass die Farben ueber dunklem Hintergrund
+   automatisch satter/leuchtender wirken statt blass wie auf Weiss - genau
+   der gewuenschte Effekt, ohne einen zweiten Farbsatz pflegen zu muessen. */
+[data-theme="dark"] {
+  --color-a: #86847e;
+  --color-b: #dad8d0;
+
+  --border-color: #34333a;
+  --text-muted: #7c7b78;
+  --text-soft: #918f8a;
+  --text-body: #d8d7d3;
+  --text-heading: #f2f0ec;
+
+  --bg-page: #17171a;
+  --bg-surface: #1e1e22;
+  --bg-subtle: #29282d;
+
+  --accent: #ff6a6e;
+  --accent-bg: #3a2226;
+
+  /* --person-color-1/-1-bg brauchen HIER keinen eigenen Eintrag - sie
+     sind als var(--accent)/var(--accent-bg) definiert und folgen der
+     Kaskade dadurch automatisch. Slots 2-4: hellere, saettigungsstaerkere
+     Toene als im Light Mode (gleiches Prinzip wie bei --accent), Hell-
+     Varianten als dunkle, leicht eingefaerbte Flaechen (gleiches Prinzip
+     wie --accent-bg im Dark Mode). */
+  --person-color-2: #a78bfa;
+  --person-color-2-bg: #2e2540;
+  --person-color-3: #60a5fa;
+  --person-color-3-bg: #1c2735;
+  --person-color-4: #4ade80;
+  --person-color-4-bg: #16281d;
+
+  --panel-shadow: 0 -12px 28px -12px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- Bogen-Farbpaletten -------------------------------------------
+   Umschaltbar ueber den kleinen Dropdown-Button oben links in der Vis-Box
+   (s. .arc-theme-picker), gesetzt als data-arc-palette auf <html>. Bewusst
+   ein EIGENES, von data-theme (Light/Dark der gesamten Oberflaeche)
+   UNABHAENGIGES Attribut - beide Achsen sind frei kombinierbar (z. B.
+   "Monochrome" im Dark Mode).
+
+   "Neon" (Standard) braucht keinen eigenen Block: das sind exakt die
+   sechs --arc-color-*-Werte, die schon in :root stehen - ohne gesetztes
+   data-arc-palette (oder explizit "neon") gelten sie unveraendert.
+
+   readArcColorStops() in script.js liest --arc-color-1..6 bei JEDEM
+   Renderdurchgang neu per getComputedStyle - die Kaskade loest die
+   passenden Werte automatisch auf, es braucht dafuer keine einzige
+   Code-Aenderung in script.js. */
+
+/* Light-Mode-Grauverlauf: dunkel -> hell (wie gewuenscht). In Kontrast-
+   Begriffen gedacht bedeutet das: Stopp 1 (kurze Distanz, mit Abstand die
+   meisten Boegen) ist der kontrastreichste Ton, Stopp 6 (lange Distanz,
+   selten) der zurueckhaltendste - dasselbe Prinzip wie bei Neon/Pastell,
+   wo der laengste Bogen farblich am praegnantesten (Gruen) ist. */
+[data-arc-palette="monochrome"] {
+  --arc-color-1: #38383894;
+  --arc-color-2: #59595994;
+  --arc-color-3: #7a7a7a94;
+  --arc-color-4: #99999994;
+  --arc-color-5: #b3b3b394;
+  --arc-color-6: #cccccc94;
+}
+
+/* Dark-Mode-Grauverlauf: fast weiss -> dunkles Grau MIT Kontrast zum
+   fast-schwarzen Seitenhintergrund (--bg-page: #17171a). Zwei
+   Attribut-Selektoren = hoehere Spezifitaet als [data-arc-palette=
+   "monochrome"] allein, gewinnt also automatisch bei aktivem Dark Mode -
+   unabhaengig von der Reihenfolge im Quelltext. */
+[data-theme="dark"][data-arc-palette="monochrome"] {
+  --arc-color-1: #ebebeb94;
+  --arc-color-2: #d1d1d194;
+  --arc-color-3: #b3b3b394;
+  --arc-color-4: #94949494;
+  --arc-color-5: #75757594;
+  --arc-color-6: #5c5c5c94;
+}
+
+/* ---- Ladebildschirm --------------------------------------------------
+   Deckt die ganze Seite ab, solange die Daten geladen und geparst werden
+   (Bibel-XML, Personen/Orte/Zeiten, Koordinaten, Bogen-Netz). Der
+   Schriftzug greift das Onboarding auf, die sich zeichnenden Boegen
+   nehmen die Kernidee der Visualisierung vorweg - statt eines neutralen
+   Spinners sieht man also schon, worum es geht. */
+.app-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-page);
+  transition: opacity 0.5s ease, visibility 0.5s;
+}
+
+/* Ausgeblendet wird per Klasse statt [hidden]: so laesst sich der
+   Uebergang animieren. visibility (nicht nur opacity) nimmt das Overlay
+   danach auch aus der Klick-Erreichbarkeit. */
+.app-loader.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-loader-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-loader-arcs {
+  width: 320px;
+  height: 96px;
+  margin-bottom: 14px;
+  overflow: visible;
+}
+
+.app-loader-arcs path {
+  fill: none;
+  /* --text-soft statt --text-muted: Letzteres hat auf dem hellen
+     Seitenhintergrund praktisch keinen Kontrast. */
+  stroke: var(--text-soft);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0;
+  /* NUR opacity animieren. stroke-dashoffset musste bei jedem Frame den
+     Pfad neu zerlegen und lief dabei auf dem Haupt-Thread - also genau
+     dort, wo gleichzeitig die 5,5-MB-XML geparst wird; die Animation
+     stockte entsprechend. Eine reine Deckkraft-Aenderung ist um
+     Groessenordnungen billiger und laeuft unabhaengig davon fluessig. */
+  animation: app-loader-wave 2.6s ease-in-out infinite;
+}
+
+/* Von aussen nach innen - dadurch entsteht der Eindruck, dass sich das
+   Bogennetz aufbaut, ohne dass ein einzelner Bogen "gezeichnet" werden
+   muss. */
+.app-loader-arcs path:nth-child(1) {
+  stroke: var(--accent);
+  animation-delay: 0s;
+}
+.app-loader-arcs path:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.app-loader-arcs path:nth-child(3) {
+  animation-delay: 0.32s;
+}
+.app-loader-arcs path:nth-child(4) {
+  animation-delay: 0.48s;
+}
+
+/* Der ganze Ablauf inkl. des 0,48-s-Versatzes ist vor Zyklusende durch -
+   nur deshalb kann der Ladebildschirm an einer Zyklusgrenze ausgeblendet
+   werden, ohne mitten in die Bewegung zu schneiden (s.
+   APP_LOADER_CYCLE_MS in script.js). */
+@keyframes app-loader-wave {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-loader-arcs path {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.app-loader-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+  color: var(--text-body);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+body.is-resizing {
+  cursor: row-resize;
+  user-select: none;
+}
+
+/* Waehrend eines aktiven Pan-Drags in der Visualisierung (s.
+   createZoomController in script.js) - verhindert, dass beim schnellen
+   Ziehen versehentlich Text auf der Seite markiert wird. */
+body.is-panning-vis {
+  user-select: none;
+}
+
+.navbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 28px;
+  flex: 0 0 auto;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  justify-self: start;
+}
+
+.navbar-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-heading);
+  letter-spacing: -0.01em;
+}
+
+.navbar-center {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: center;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: border-color 0.15s ease, color 0.15s ease,
+    background-color 0.25s ease;
+}
+
+.icon-button:hover {
+  border-color: #c9c9c9;
+  color: var(--text-body);
+}
+
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  width: 360px;
+  color: var(--text-soft);
+}
+
+.search-icon {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+#reference-search {
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: var(--text-body);
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  font-family: inherit;
+}
+
+#reference-search::placeholder {
+  color: var(--text-muted);
+}
+
+.search-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-color);
+  flex: 0 0 auto;
+}
+
+.search-translation {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+  letter-spacing: 0.02em;
+}
+
+/* Kurze Rueckmeldung ("kein Kapitel gefunden"), erscheint bei Bedarf
+   unter der Suchleiste - absolut positioniert, verschiebt also nichts
+   im Layout. Wird per Timeout in script.js (wireReferenceSearch)
+   automatisch wieder ausgeblendet. */
+.search-feedback {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 18px;
+  right: 18px;
+  font-size: 12px;
+  color: var(--accent);
+  text-align: center;
+}
+
+.search-feedback[hidden] {
+  display: none;
+}
+
+/* Dark-Mode-Toggle, direkt rechts neben der Suchleiste in .navbar-center.
+   Reiner Pill-Track mit gleitendem Thumb - Zustand kommt ausschliesslich
+   aus dem data-theme-Attribut auf <html> (von script.js gesetzt), keine
+   eigene Zustandsklasse noetig. Sonne/Mond ueberblenden per Opacity statt
+   dass der Thumb-Inhalt per JS ausgetauscht wird - rein deklarativ. */
+.theme-toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: border-color 0.15s ease, background-color 0.25s ease;
+}
+
+.theme-toggle:hover {
+  border-color: #c9c9c9;
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-page);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transform: translateX(0);
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1),
+    background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+[data-theme="dark"] .theme-toggle-thumb {
+  transform: translateX(20px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle-thumb {
+    transition: background-color 0.25s ease, border-color 0.25s ease,
+      color 0.25s ease;
+  }
+}
+
+.theme-toggle-icon {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.theme-toggle-icon-sun {
+  opacity: 1;
+}
+
+[data-theme="dark"] .theme-toggle-icon-sun {
+  opacity: 0;
+}
+
+[data-theme="dark"] .theme-toggle-icon-moon {
+  opacity: 1;
+}
+
+.profile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  border: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+  justify-self: end;
+  transition: background-color 0.25s ease;
+}
+
+.dashboard {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+  gap: 14px;
+  padding: 0 24px 24px;
+}
+
+.sidebar {
+  position: relative;
+  width: 72px;
+  flex: 0 0 auto;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  transition: width 0.2s ease, background-color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.sidebar.expanded {
+  width: 280px;
+  align-items: stretch;
+}
+
+.sidebar-header {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
+.sidebar-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.sidebar.expanded .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+.sidebar-content {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: 16px;
+  min-height: 0;
+}
+
+.sidebar:not(.expanded) .sidebar-content {
+  display: none;
+}
+
+/* ---- Word-Explorer (Personen/Orte/Zahlen) --------------------------
+   Fuellt .sidebar-content komplett, in drei uebereinanderliegenden
+   Bloecken: Kategorie-Auswahl (fix), Suchleiste (fix), Liste (scrollt). */
+.word-explorer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  gap: 12px;
+}
+
+/* Pill-foermiger Segmented-Control: eine Pille als Rahmen, darin die
+   einzelnen Optionen als gleich breite Segmente. Die aktive Option
+   bekommt eine eigene, kleinere Pille als Hintergrund - dadurch wirkt
+   der Wechsel wie ein "Slider" statt wie drei separate Buttons. */
+.word-category-control {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  background: var(--bg-page);
+  transition: border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.word-category-option {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-pill);
+  padding: 7px 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.word-category-option:hover {
+  color: var(--text-body);
+}
+
+.word-category-option.is-active {
+  background: var(--bg-surface);
+  color: var(--text-heading);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.word-category-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Wortart-Filter (nur Kategorie "Woerter") -----------------------
+   Kleine Toggle-Chips, EINE pro Wortart, die tatsaechlich in
+   wordReferenceIndex.json vorkommt (dynamisch aus den Daten gebaut, s.
+   wireWordExplorer in script.js) - Standard: nur Nomen/Adjektive/Verben
+   aktiv (is-active), der Rest inaktiv/ausgegraut, aber jederzeit
+   zuschaltbar. Bewusst KEIN Segmented-Control wie .word-category-control
+   (dort ist immer GENAU EINE Option aktiv) - hier sind MEHRERE Chips
+   gleichzeitig aktiv moeglich, daher eher wie kleine Filter-Pillen. */
+.word-pos-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.word-pos-filter[hidden] {
+  display: none;
+}
+
+.word-pos-chip {
+  border: 1px solid var(--border-color);
+  background: var(--bg-page);
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.word-pos-chip:hover {
+  color: var(--text-body);
+  border-color: #c9c9c9;
+}
+
+.word-pos-chip.is-active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent-bg);
+  font-weight: 600;
+}
+
+/* Eigene Suchleiste fuer die Wort-/Namensliste - bewusst dieselbe Optik
+   wie die Referenz-Suchleiste in der Navbar (.search-bar), aber eine
+   eigene Klasse: beide durchsuchen grundsaetzlich Verschiedenes (Kapitel-
+   Referenzen vs. Namen in der aktiven Kategorie-Liste). */
+.word-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 8px 12px;
+  flex: 0 0 auto;
+  color: var(--text-soft);
+  transition: border-color 0.25s ease;
+}
+
+.word-search-bar:focus-within {
+  border-color: #c9c9c9;
+}
+
+.word-search-bar .search-icon {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+#word-search-input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--text-body);
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  font-family: inherit;
+}
+
+#word-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Kleines "x" rechts in der Wortsuche - loescht den Suchtext. Nur
+   sichtbar, solange etwas eingegeben ist (per [hidden] aus dem JS). */
+.word-search-clear {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.word-search-clear:hover {
+  color: var(--text-body);
+}
+
+.word-search-clear[hidden] {
+  display: none;
+}
+
+/* Kopfzeile ueber der Pin-Sektion mit dem "Filter löschen"-Button. Sitzt
+   INNERHALB des sticky Pin-Blocks, faehrt also beim Scrollen mit und ist
+   immer erreichbar - der Sinn des Buttons ist ja, einen als stoerend
+   empfundenen Filter sofort loswerden zu koennen. */
+.word-list-pinned-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 2px 4px;
+}
+
+.word-pins-clear {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.word-pins-clear:hover {
+  background: var(--bg-subtle);
+  color: var(--accent);
+}
+
+.word-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -8px;
+  padding: 0 8px;
+}
+
+/* Wrapper um Haupt-Zeile (.word-list-item) + Kapitel-/Vers-Dropdown einer
+   Person - fasst beide zu einer visuellen Einheit zusammen, damit der
+   Rahmen/Radius beim Aufklappen des Dropdowns konsistent bleibt (statt
+   dass die Liste optisch lose darunter haengt). */
+.word-list-entry {
+  display: flex;
+  flex-direction: column;
+}
+
+.word-list-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.word-list-row .word-list-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.word-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-body);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.word-list-item:hover {
+  background: var(--bg-subtle);
+}
+
+.word-list-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.word-list-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kleines Wortart-Kuerzel (NOUN/VERB/ADJ/...) hinter dem Namen - nur bei
+   Eintraegen der Kategorie "Woerter" vorhanden (s. createWordListEntry in
+   script.js), da dasselbe Lemma dort als mehrere Wortarten separat
+   auftauchen kann (z. B. "gut" als ADJ UND als ADV) und sonst nicht
+   unterscheidbar waere. */
+.word-list-pos {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Chevron-Button: klappt das Vers-/Crossref-Dropdown dieser Person auf/
+   zu (unabhaengig vom Pin-Status, s. expandedIds in script.js) - nur bei
+   :hover ueber den ganzen Eintrag sichtbar (opacity 0 -> 1), NICHT
+   dauerhaft eingeblendet, auch nicht bei angepinnten Personen. Erneutes
+   Hovern eines bereits offenen Dropdowns zeigt ihn ebenfalls wieder, zum
+   Wieder-Zuklappen. */
+.word-list-expand-toggle {
+  flex: 0 0 auto;
+  width: 26px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.1s ease;
+}
+
+.word-list-entry:hover .word-list-expand-toggle,
+.word-list-expand-toggle:focus-visible {
+  opacity: 1;
+}
+
+.word-list-expand-toggle:hover {
+  background: var(--bg-subtle);
+  color: var(--text-body);
+}
+
+.word-list-expand-toggle svg {
+  transition: transform 0.15s ease;
+}
+
+.word-list-expand-toggle.is-open svg {
+  transform: rotate(180deg);
+}
+
+.word-list-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Angepinnte Personen (bis zu 4, s. PERSON_COLOR_VARS/pinnedPersons
+   in script.js) --------------------------------------------------------
+   Eigener Block oberhalb der regulaeren, nach Haeufigkeit sortierten
+   Liste - abgesetzt durch einen unteren Rand, damit klar ist, dass
+   dies eine separate, manuell zusammengestellte Auswahl ist. Angepinnte
+   Eintraege erscheinen NIE zusaetzlich in der Liste darunter (s.
+   renderWordList in script.js) - keine Dopplung in einer potenziell
+   3000+ Eintraege langen Liste.
+
+   position:sticky haelt diesen Block beim Scrollen durch die lange
+   Hauptliste oben fixiert (Scroll-Container ist #word-list selbst,
+   s. .word-list { overflow-y:auto } - sticky bezieht sich automatisch
+   auf den naechsten scrollenden Vorfahren, hier also direkt den
+   Eltern-Container, kein zusaetzliches Wrapper-Element noetig). Braucht
+   eine EIGENE Hintergrundfarbe (--bg-surface, dieselbe Flaeche wie die
+   Sidebar-Karte selbst) - sonst wuerde die durchscrollende Hauptliste
+   dahinter sichtbar durchscheinen. z-index:1 haelt es ueber der
+   Hauptliste, aber unter Dropdown-Overlays o.ae. an anderer Stelle der
+   App (die alle deutlich hoehere z-index-Werte nutzen). */
+.word-list-pinned {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+  padding-bottom: 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-surface);
+}
+
+/* Vier Farb-Slots nach Pin-REIHENFOLGE (nicht nach Person) - Slot 1 ist
+   bewusst das bereits bekannte --accent-Rot (dieselbe Optik wie vorher
+   die einzelne "ausgewaehlte Person"), Slots 2-4 neu. Wird JS-seitig als
+   zusaetzliche Klasse `is-pin-color-{1..4}` gesetzt (s. createWordListEntry
+   in script.js) - kein Inline-Style noetig, dadurch bleibt es
+   automatisch Theme-reaktiv ueber die CSS-Variablen. */
+.word-list-item.is-pinned {
+  font-weight: 600;
+}
+
+.word-list-item.is-pin-color-1 {
+  background: var(--person-color-1-bg);
+  color: var(--person-color-1);
+}
+.word-list-item.is-pin-color-2 {
+  background: var(--person-color-2-bg);
+  color: var(--person-color-2);
+}
+.word-list-item.is-pin-color-3 {
+  background: var(--person-color-3-bg);
+  color: var(--person-color-3);
+}
+.word-list-item.is-pin-color-4 {
+  background: var(--person-color-4-bg);
+  color: var(--person-color-4);
+}
+
+/* Kapitel-/Vers-Dropdown: bei UNGEPINNTEN Eintraegen nur bei :hover
+   sichtbar (per JS ein-/ausgeblendet, s. wireWordExplorer - Inhalt wird
+   dabei LAZY beim ersten Hover gebaut, nicht fuer alle 3000+ Eintraege
+   im Voraus), bei angepinnten Eintraegen IMMER sichtbar ("aktivierter
+   Zustand" braucht keinen Hover). Auf ca. 6 Zeilen Hoehe geklemmt
+   (max-height) mit overflow-y:auto statt hartem overflow:hidden - bei
+   Personen mit vielen Versen (z. B. David) waeren die restlichen sonst
+   komplett unerreichbar. */
+.word-list-chapters {
+  max-height: 190px;
+  overflow-y: auto;
+  margin: 2px 0 4px;
+  padding-left: 4px;
+  border-left: 2px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.word-list-chapters[hidden] {
+  display: none;
+}
+
+.word-list-chapter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-soft);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.word-list-chapter:hover {
+  background: var(--bg-subtle);
+  color: var(--text-body);
+}
+
+/* Crossref-Zeile im Dropdown (Vers, der selbst eine Fussnoten-
+   Querverweis-Quelle ist) - bewusst dieselbe Pfeil-Optik wie
+   .reference-chip .arrow in der Chip-Leiste ueber dem Kapiteltext, damit
+   "das ist ein Querverweis" ueberall gleich aussieht. */
+.word-list-chapter-crossref .arrow {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+/* Ueberlappungs-Badge: kleine, in der GEMISCHTEN Farbe eingefaerbte
+   Zahl vor dem Eintrag, wenn dieser Vers zu MEHREREN angepinnten
+   Personen gleichzeitig gehoert (s. multiplyBlendColors in script.js).
+   Nur bei angepinnten Eintraegen ueberhaupt vorhanden - die Sortierung
+   nach oben passiert bereits in JS (s. sortRowsByOverlap), das Badge
+   macht diese Sonderstellung zusaetzlich visuell erkennbar. */
+.word-list-overlap-badge {
+  flex: 0 0 auto;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.word-list-chapter.has-overlap {
+  font-weight: 600;
+  color: var(--text-body);
+}
+
+.word-list-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+  padding: 24px 8px;
+}
+
+.sidebar-placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  padding: 0 6px;
+}
+
+.sidebar-search-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+  margin-top: auto;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* position:relative macht das Panel zum Verankerungspunkt fuer die
+   absolut positionierten Kinder (Info-Bereich-Overlay + Trenner unten). */
+.visualizer-panel {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: calc(100vh - var(--chrome-height));
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* Einziges "echtes" Flex-Kind des Panels (Trenner + Info-Bereich sind
+   jetzt position:absolute und damit aus dem Flex-Fluss heraus). Die Hoehe
+   kommt IMMER von script.js als Inline-Style - in JEDEM der drei
+   Ansichtszustaende, und ist dabei jetzt ueberall identisch (siehe
+   CANVAS_HEIGHT_FRACTION in script.js). */
+.visualizer-canvas {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.reset-button {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 6;
+  transition: border-color 0.15s ease, color 0.15s ease,
+    background-color 0.25s ease;
+}
+
+.reset-button:hover {
+  border-color: #c9c9c9;
+  color: var(--text-body);
+}
+
+.reset-button[hidden] {
+  display: none;
+}
+
+/* ---- Umschalter oben links in der Vis-Box ---------------------------
+   Zwei Pill-Segmented-Controls nebeneinander: Darstellung (Arc/Grid/Map)
+   und - nur in der Arc-Ansicht - die Bogenfarben (Neon/Monochrom). Beide
+   uebernehmen bewusst die Optik von .word-category-control in der Sidebar,
+   damit "Auswahl aus wenigen Optionen" ueberall in der App gleich
+   aussieht.
+
+   Bewusst AUSSERHALB von .zoom-viewport (nicht Teil des gezoomten
+   Inhalts) - direktes Kind von .visualizer-canvas, analog zu
+   .reset-button, mit z-index 7 (unter Trenner (9) und Info-Bereich (8),
+   ueber Boegen (5) und Fusszeile (6)). */
+/* Im Info-/Onboarding-Zustand ausblenden: sie laegen ueber der Buehne und
+   haetten dort keine Wirkung.
+
+   Das Bogen-Overlay der ECHTEN Visualisierung muss hier ebenfalls weg: es
+   ist ein eigenstaendiges Kind von .visualizer-canvas (nicht von
+   .zoom-viewport) und wird deshalb NICHT mit ausgeblendet, wenn showInfo()
+   die Viewports versteckt. Frueher fiel das nicht auf, weil bei offenem
+   Info-Bereich ein Redraw mit 0-Breite lief und die Boegen zu nichts
+   zusammenfielen - seit das korrekt unterbunden ist (relayoutCurrentView),
+   behalten sie ihre gueltige Geometrie und lagen sichtbar ueber dem
+   Onboarding. */
+[data-view="info"] .vis-mode-control,
+[data-view="info"] .arc-palette-control,
+[data-view="info"] .arc-overlay {
+  display: none;
+}
+
+.vis-mode-control,
+.arc-palette-control {
+  position: absolute;
+  top: 14px;
+  z-index: 7;
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  background: var(--bg-page);
+  transition: border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.vis-mode-control {
+  left: 18px;
+}
+
+/* Rechts daneben. Der Abstand ist grosszuegig genug bemessen, dass der
+   Darstellungs-Switch mit seinen drei Optionen sicher darunter passt,
+   ohne dass beide Controls sich beruehren. */
+.arc-palette-control {
+  left: 210px;
+}
+
+.arc-palette-control[hidden] {
+  display: none;
+}
+
+.vis-mode-option,
+.arc-palette-option {
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.vis-mode-option:hover,
+.arc-palette-option:hover {
+  color: var(--text-body);
+}
+
+.vis-mode-option.is-active,
+.arc-palette-option.is-active {
+  background: var(--bg-surface);
+  color: var(--text-heading);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.vis-mode-option:focus-visible,
+.arc-palette-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Bleibt ein normales Flex-Kind von .visualizer-canvas (reserviert also
+   weiterhin seinen eigenen Platz am Boden des Canvas, s. footerHeight in
+   computeArcHeightForCanvas) - der Transform verschiebt ihn nur rein
+   visuell, ohne Layout-Auswirkung. Dieselbe --lower-pane-height-Variable
+   und dieselbe Transition-Dauer/Kurve wie bei .lower-pane sorgen dafuer,
+   dass Titel und Info-Bereich exakt im Gleichschritt wandern: sobald der
+   Info-Bereich geoeffnet ist, sitzt der (ansonsten von ihm verdeckte)
+   Titel direkt an dessen Oberkante, statt darunter zu verschwinden. */
+.canvas-footer {
+  position: relative;
+  z-index: 6;
+  flex: 0 0 auto;
+  padding: 10px 30px 14px;
+  background: var(--bg-surface);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.25s ease;
+}
+
+.canvas-footer.is-open {
+  transform: translateY(calc(-1 * var(--lower-pane-height)));
+}
+
+/* Waehrend des aktiven Trenner-Drags aendert sich --lower-pane-height
+   laufend (mehrfach pro Sekunde) - mit aktiver Transition wuerde der
+   Titel dem Trenner dadurch spuerbar hinterherhinken statt ihm 1:1 zu
+   folgen. Wird nur fuer die Dauer des Drags gesetzt (s. onDragStart/
+   onDragEnd in script.js). */
+.canvas-footer.is-dragging {
+  transition: none;
+}
+
+/* transparent -> var(--bg-surface) statt vorher hartkodiertem
+   rgba(255,255,255,..): blendet die Balken unter dem Footer aus, in
+   GENAU der Flaechenfarbe, die der Footer selbst gerade hat - damit
+   funktioniert der Verlauf automatisch in beiden Themes, statt im Dark
+   Mode als heller Fleck aufzufallen. */
+/* Der Ausblend-Verlauf gilt fuer ALLE Darstellungen. Er war
+   zwischenzeitlich im Grid abgeschaltet, weil er dort die unterste
+   Quadratreihe ausblasste - seit .grid-viewport unten 66px Abstand haelt
+   (mehr als die 60px Verlaufshoehe), liegt das Raster gar nicht mehr im
+   Verlaufsbereich, und die harte Kante ueber der Fusszeile entfaellt
+   ebenfalls. */
+
+.canvas-footer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, var(--bg-surface));
+  pointer-events: none;
+}
+
+/* Fuellt den Bereich DIREKT UNTER der Fusszeile mit derselben Flaechen-
+   farbe. Grund: .lower-pane hat oben abgerundete Ecken (border-radius),
+   die Fusszeile ist dagegen ein einfaches Rechteck ohne Rundung. Beide
+   Kanten treffen sich exakt an derselben Linie (Fusszeile verschiebt sich
+   beim Oeffnen um genau --lower-pane-height nach oben, .lower-pane ist
+   genau so hoch) - in den beiden oberen ECKEN faellt die runde Kontur des
+   Info-/Kapitelbereichs aber von dieser Linie zurueck, wodurch dort ohne
+   dieses Element ein kleiner keilfoermiger Spalt entsteht, durch den die
+   Visualisierung dahinter durchscheint. Da .lower-pane einen hoeheren
+   z-index hat (8 vs. 6), deckt es diese Flaeche ueberall dort ab, wo es
+   selbst Farbe traegt - nur in den runden Ecken bleibt diese Flaeche
+   sichtbar und schliesst die Luecke, exakt in derselben Farbe wie
+   Fusszeile und Info-/Kapitelbereich. Bewusst ein SEPARATES Element statt
+   die Fusszeile selbst zu vergroessern: dadurch bleibt der Zuercher-
+   Bibel-Claim an seiner bisherigen Position, nur die Flaeche darunter
+   wird groesszuegiger. */
+.canvas-footer::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: calc(var(--radius-lg) + 4px);
+  background: var(--bg-surface);
+  pointer-events: none;
+  transition: background-color 0.25s ease;
+}
+
+.version-label strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.version-label span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* flex:1 sorgt in ALLEN Ansichtszustaenden dafuer, dass der Container die
+   volle (in jedem Zustand gleich hohe) Canvas-Flaeche einnimmt - nur noch
+   padding-top (--bible-padding) reserviert oben Platz fuer die
+   Bogenwoelbung, darunter folgen direkt die Balken. Etwaiger Rest-Freiraum
+   (falls die Bogenhoehe unterhalb ihres Maximalwerts bleibt) landet dadurch
+   unten (vor der Fusszeile) statt oben ueber den Boegen. */
+/* Neues Fenster ZWISCHEN Canvas und #bible-container: uebernimmt die
+   Groessen-/Clipping-Rolle, die vorher #bible-container selbst hatte
+   (flex:1, min-height:0). #bible-container bekommt dadurch eine FESTE
+   Referenzgroesse (100% dieses Fensters) und kann per transform beliebig
+   skaliert/verschoben werden, waehrend overflow:hidden HIER (am
+   unveraenderten Fenster, nicht am skalierten Inhalt selbst) zuverlaessig
+   auf die urspruengliche Groesse clippt - ein Transform direkt auf einem
+   Element mit eigenem overflow:hidden wuerde stattdessen dessen
+   Clip-Bereich mitskalieren, s. Kommentar bei createZoomController in
+   script.js. cursor:grab signalisiert, dass sich die Ansicht per Drag
+   verschieben laesst (sobald gezoomt ist).  */
+.zoom-viewport {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.zoom-viewport.is-panning {
+  cursor: grabbing;
+}
+
+/* Grid-Ansicht (Alternative zur Bogen-Ansicht, s. vis-mode-picker) -
+   dieselbe flex:1-Groessenrolle wie .zoom-viewport (beide sind nie
+   gleichzeitig sichtbar, s. setVisMode in script.js), aber OHNE eigenes
+   Zoom/Pan-System: die Quadrate sind gross genug, um ohne Zoom komfortabel
+   klickbar zu sein, und die Anfrage sah explizit keine Zoom-Faehigkeit
+   fuer diese Ansicht vor. flex zentriert das (in JS auf eine feste
+   Pixelgroesse gebrachte) #chapter-grid sowohl horizontal als auch
+   vertikal im verfuegbaren Raum - derselbe "aussen zentrieren, innen
+   exakt bemessen"-Aufbau wie bei #bible-container/.zoom-viewport. */
+.grid-viewport {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  /* Oben mehr Freiraum als an den uebrigen Kanten: dort liegen die beiden
+     Umschalter (.vis-mode-control / .arc-palette-control, top:14px, ca.
+     30px hoch) als Overlay ueber dem Canvas. Mit gleichmaessigen 32px ragte
+     der Switch sichtbar in die oberste Quadratreihe hinein. Der Wert deckt
+     Position + Hoehe des Controls ab und laesst darunter noch etwas Luft.
+     layoutChapterGrid() zieht das tatsaechliche CSS-Padding ab (s. dort),
+     das Grid wird dadurch korrekt kleiner statt zu ueberlaufen - und
+     ruecht durch die asymmetrische Aufteilung zugleich nach unten. */
+  /* Unten so viel Freiraum wie oben: dort liegt der 60px hohe
+     Ausblend-Verlauf ueber der Fusszeile. Ohne diesen Abstand ragte die
+     unterste Quadratreihe hinein und wirkte ausgeblasst. */
+  padding: 62px 32px 66px;
+}
+
+.grid-viewport[hidden] {
+  display: none;
+}
+
+/* Karte-Ansicht (dritter Modus, s. vis-mode-picker) - dieselbe flex:1-
+   Groessenrolle wie .zoom-viewport/.grid-viewport (nie gleichzeitig
+   sichtbar, s. setVisMode in script.js). KEIN padding wie bei
+   .grid-viewport: die Globe soll die verfuegbare Flaeche moeglichst
+   grosszuegig ausfuellen, das WebGL-<canvas> selbst uebernimmt bereits
+   per renderer.setSize() (s. createGlobeView.resize()) exakt die Groesse
+   von #globe-canvas-container. cursor:grab signalisiert wie bei der
+   Boegen-Ansicht, dass sich die Kugel per Drag rotieren laesst
+   (OrbitControls). */
+.map-viewport {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.map-viewport:active {
+  cursor: grabbing;
+}
+
+.map-viewport[hidden] {
+  display: none;
+}
+
+#globe-canvas-container {
+  width: 100%;
+  height: 100%;
+}
+
+#globe-canvas-container canvas {
+  display: block;
+}
+
+/* Feste Pixel-Spaltenbreite/-Reihenhoehe kommen aus script.js
+   (layoutChapterGrid) - dort wird pro Fenstergroesse berechnet, wie viele
+   Spalten/Zeilen die verfuegbare Flaeche mit MOEGLICHST GROSSEN, aber
+   weiterhin exakt quadratischen Zellen fuellen (s. computeGridLayout). */
+#chapter-grid {
+  display: grid;
+}
+
+.chapter-square {
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.chapter-square.color-a {
+  background: var(--color-a);
+}
+
+.chapter-square.color-b {
+  background: var(--color-b);
+}
+
+/* Exakt dieselbe Bedeutung/Mechanik wie .chapter-bar.is-active (s. dort
+   fuer die ausfuehrliche Begruendung des Outline- statt Hintergrund-
+   Ansatzes - derselbe Grund gilt hier: --person-bg als Inline-Custom-
+   Property gewinnt sonst immer gegen eine Klassen-Hintergrundfarbe). */
+.chapter-square.is-active {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.chapter-square.is-person-active {
+  background: var(--person-bg, var(--accent));
+  opacity: 1;
+}
+
+.chapter-square.is-person-dimmed {
+  opacity: 0.15;
+}
+
+.chapter-square:hover {
+  background: var(--accent);
+}
+
+/* Nimmt bei .zoom-viewport[hidden] genau dessen Platz ein (gleiches
+   flex:1 wie oben) - beide sind niemals gleichzeitig sichtbar, s.
+   showInfo()/reset() in createLayoutController (script.js). Eigene
+   Scrollbarkeit, falls der Text bei kleinen Fenstern die Hoehe
+   ueberschreitet. */
+.info-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Bewusst OHNE Padding: das Onboarding rechnet mit der Panel-Breite und
+     zeichnet Balken/Boegen in absoluten Pixeln. Mit einem Innenabstand
+     laege die Content-Box schmaler als der gemessene clientWidth (der das
+     Padding mitzaehlt) - die SVG-Flaeche waere breiter als ihr Platz und
+     der rechte Rand der Grafik wirkte abgeschnitten. Den noetigen Abstand
+     bringen die Textkarten selbst mit (.ob-step). */
+  padding: 0;
+}
+
+.info-panel[hidden] {
+  display: none;
+}
+
+/* ---- Onboarding (scroll-getriebene Erklaerung im Info-Bereich) -------
+   ARCHITEKTUR-ENTSCHEIDUNG: Der Scroll bestimmt nur, WELCHER Schritt
+   aktiv ist (script.js setzt data-ob-step auf .ob-root). Die eigentliche
+   Bewegung machen CSS-Transitions. Der naheliegende Weg - Animationswerte
+   pro Scroll-Frame in JS berechnen - haette bei 1189 Balken 1189
+   Style-Schreibvorgaenge PRO FRAME bedeutet und waehrend des Scrollens
+   sichtbar geruckelt. So sind es pro Schritt genau ein Attributwechsel
+   und danach GPU-nahe transform/opacity-Uebergaenge. Rueckwaerts
+   scrollen funktioniert automatisch, weil Transitions in beide
+   Richtungen laufen. */
+.ob-root {
+  position: relative;
+}
+
+/* Bleibt stehen, waehrend die Text-Abschnitte vorbeiscrollen. Die Hoehe
+   setzt script.js (sie richtet sich nach der Panel-Hoehe, die wiederum
+   von der Fenstergroesse abhaengt). */
+.ob-stage {
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Startzustand: Titel mittig, wie oben links in der Navbar. Verschwindet,
+   sobald der erste Schritt erreicht ist. */
+.ob-intro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.ob-intro-title {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+}
+
+.ob-intro-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  animation: ob-nudge 1.8s ease-in-out infinite;
+}
+
+@keyframes ob-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+.ob-root:not([data-ob-step="0"]) .ob-intro {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+
+.ob-bars,
+.ob-arcs {
+  position: absolute;
+  inset: 0;
+}
+
+/* Jeder Balken sitzt absolut auf seiner x-Position (einmalig gesetzt) und
+   waechst nach OBEN. Animiert wird ausschliesslich transform/opacity -
+   niemals height: eine Hoehenaenderung an 1189 Elementen loest 1189
+   Layout-Berechnungen aus, ein scaleY dagegen keine einzige. */
+.ob-bar {
+  position: absolute;
+  /* Oben buendig, waechst nach unten - wie die echten Kapitel-Balken.
+     top wird in layout() gesetzt. */
+  transform-origin: top center;
+  background: var(--text-body);
+  border-radius: 1px;
+  opacity: 0;
+  transform: scaleY(var(--ob-scale-equal));
+  transition: opacity 0.25s ease, transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Schritt 1: alle Balken gleich lang, nacheinander von links nach rechts.
+   Die zeitliche Staffelung steckt in --ob-delay (pro Balken einmalig
+   gesetzt), nicht in wiederholten JS-Aufrufen. */
+.ob-root[data-ob-step="1"] .ob-bar,
+.ob-root[data-ob-step="2"] .ob-bar,
+.ob-root[data-ob-step="3"] .ob-bar,
+.ob-root[data-ob-step="4"] .ob-bar {
+  opacity: 0.85;
+  transition-delay: var(--ob-delay), 0s;
+}
+
+/* Schritt 2 und weiter: auf die tatsaechliche Versanzahl wachsen. */
+.ob-root[data-ob-step="2"] .ob-bar,
+.ob-root[data-ob-step="3"] .ob-bar,
+.ob-root[data-ob-step="4"] .ob-bar {
+  transform: scaleY(var(--ob-scale-full));
+  transition-delay: 0s, var(--ob-grow-delay);
+}
+
+/* Beispiel-Bogen (Jes 54:9 -> Gen 9:11): wird wie mit einem Stift
+   gezogen. stroke-dasharray = Pfadlaenge, der Versatz wandert von voller
+   Laenge auf 0 - die klassische "Trimpath"-Technik, in SVG ohne
+   Zusatzbibliothek moeglich. */
+.ob-arc-example {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dashoffset: var(--ob-arc-length);
+  transition: stroke-dashoffset 1.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ob-root[data-ob-step="3"] .ob-arc-example,
+.ob-root[data-ob-step="4"] .ob-arc-example {
+  stroke-dashoffset: 0;
+}
+
+/* Die beiden beteiligten Kapitel hervorheben, damit erkennbar ist, WO der
+   Bogen ansetzt. */
+.ob-bar.is-example {
+  background: var(--accent);
+}
+
+.ob-arc-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 0.4s ease 0.6s;
+}
+
+.ob-root[data-ob-step="3"] .ob-arc-label,
+.ob-root[data-ob-step="4"] .ob-arc-label {
+  opacity: 1;
+}
+
+/* Schritt 4: das uebrige Netz. Die Pfade existieren bereits im DOM (einmal
+   gebaut), es wird nur die Deckkraft hochgefahren - Pfade waehrend des
+   Scrollens zu ERZEUGEN waere der teure Weg. */
+.ob-arc-rest {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 0.5;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.ob-root[data-ob-step="4"] .ob-arc-rest {
+  opacity: 0.5;
+  transition-delay: var(--ob-delay);
+}
+
+/* ---- Schritt 5: Ruecklauf und Morph ins Raster -----------------------
+   Zuerst verschwinden die Boegen und die Balken werden wieder gleich lang
+   (das ergibt sich von selbst: die Regeln fuer Schritt 2-4 greifen ab
+   Schritt 5 nicht mehr). Erst danach - per transition-delay - wandern sie
+   an ihren Rasterplatz. Diese Staffelung IST der "Ruecklauf": ohne sie
+   wuerden Zurueckfallen und Morph gleichzeitig passieren und das Auge
+   koennte beidem nicht folgen. */
+.ob-root[data-ob-step="5"] .ob-bar,
+.ob-root[data-ob-step="6"] .ob-bar,
+.ob-root[data-ob-step="7"] .ob-bar,
+.ob-root[data-ob-step="8"] .ob-bar,
+.ob-root[data-ob-step="9"] .ob-bar {
+  opacity: 0.85;
+  transform: translate(var(--ob-grid-tx), var(--ob-grid-ty))
+    scale(var(--ob-grid-sx), var(--ob-grid-sy));
+  border-radius: 0;
+  transition: opacity 0.25s ease,
+    transform 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.45s;
+}
+
+/* Bei den erklaerenden Schritten tritt das Raster zurueck, damit Pins,
+   Farbfelder und Kugel klar lesbar bleiben - nebeneinander wuerden beide
+   Ebenen um Aufmerksamkeit konkurrieren. Bei den Pins bleibt es schwach
+   sichtbar (der Bezug "faerbt Kapitel ein" soll erkennbar bleiben), bei
+   der Kugel verschwindet es ganz, da es dort keinen Bezug mehr gibt. */
+/* Schritt 6: die Kapitel der vier Beispiele leuchten GRUPPENWEISE
+   nacheinander auf - genau wie beim echten Anpinnen in der Grid-Ansicht.
+   Farbe und Verzoegerung stehen pro Balken in Variablen (s.
+   applyExampleColors), die Gruppierung entsteht also allein ueber
+   gestaffelte transition-delays, ohne Zwischenschritte im JS. */
+.ob-root[data-ob-step="6"] .ob-bar {
+  opacity: var(--ob-pin-opacity, 0.1);
+  background: var(--ob-pin-bg, var(--text-body));
+  transition: opacity 0.55s ease var(--ob-pin-delay),
+    background-color 0.55s ease var(--ob-pin-delay),
+    transform 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.ob-root[data-ob-step="7"] .ob-bar {
+  opacity: 0.1;
+}
+
+.ob-root[data-ob-step="9"] .ob-bar {
+  opacity: 0;
+}
+
+/* ---- Schritt 6: die vier Kategorien ---------------------------------- */
+.ob-pins {
+  position: absolute;
+  right: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.ob-root[data-ob-step="6"] .ob-pins {
+  opacity: 1;
+}
+
+.ob-pin {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateX(14px);
+  transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ob-root[data-ob-step="6"] .ob-pin {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: var(--ob-delay);
+}
+
+.ob-pin-cat {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+/* Dieselben vier Pin-Farben wie in der echten Sidebar. */
+.ob-pin-1 {
+  background: var(--person-color-1-bg);
+  color: var(--person-color-1);
+}
+.ob-pin-2 {
+  background: var(--person-color-2-bg);
+  color: var(--person-color-2);
+}
+.ob-pin-3 {
+  background: var(--person-color-3-bg);
+  color: var(--person-color-3);
+}
+.ob-pin-4 {
+  background: var(--person-color-4-bg);
+  color: var(--person-color-4);
+}
+
+/* ---- Schritt 7: Farben und ihre Mischungen --------------------------- */
+.ob-combos {
+  position: absolute;
+  right: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  grid-template-columns: repeat(5, 46px);
+  gap: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.ob-root[data-ob-step="7"] .ob-combos {
+  opacity: 1;
+}
+
+.ob-combo {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ob-root[data-ob-step="7"] .ob-combo {
+  opacity: 1;
+  transform: scale(1);
+  transition-delay: var(--ob-delay);
+}
+
+/* ---- Schritt 8: das Raster funkelt ----------------------------------- */
+.ob-root[data-ob-step="8"] .ob-bar {
+  animation: ob-sparkle 2.8s ease-in-out infinite;
+  animation-delay: var(--ob-sparkle-delay);
+}
+
+/* Nur background-color und opacity - beides ohne Layout-Kosten. Die
+   Farbe steckt in einer per-Balken gesetzten Variable, sodass alle vier
+   Pin-Farben gleichzeitig ueber das Raster wandern. */
+@keyframes ob-sparkle {
+  0%,
+  72%,
+  100% {
+    background: var(--text-body);
+  }
+  82% {
+    background: var(--ob-sparkle-color);
+  }
+}
+
+.ob-finish {
+  margin-top: 6px;
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.ob-finish:hover {
+  filter: brightness(1.08);
+}
+
+.ob-finish:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Schritt 9: die Kugel -------------------------------------------- */
+.ob-globe {
+  position: absolute;
+  right: 70px;
+  top: 50%;
+  width: 300px;
+  height: 300px;
+  margin-top: -150px;
+  opacity: 0;
+  transform: scale(0.85);
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ob-root[data-ob-step="9"] .ob-globe {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Bewusst eine rein dekorative Kugel aus CSS statt einer echten Karte:
+   MapLibre zu instanziieren haette Netzwerk, Kacheln und den ganzen
+   Lebenszyklus mitgebracht - fuer ein Standbild im Onboarding ein
+   schlechtes Geschaeft. Die Laengengrade sind Ellipsen, die sich langsam
+   drehen und so eine Rotation andeuten. */
+.ob-globe-ball {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 34% 28%,
+    var(--bg-surface),
+    var(--bg-subtle) 45%,
+    var(--border-color) 100%
+  );
+  border: 1px solid var(--border-color);
+  box-shadow: inset -18px -12px 40px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.ob-globe-ball::before,
+.ob-globe-ball::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--text-muted);
+  opacity: 0.55;
+}
+
+.ob-globe-ball::before {
+  animation: ob-globe-spin 9s linear infinite;
+}
+
+.ob-globe-ball::after {
+  border-color: var(--accent);
+  opacity: 0.4;
+  animation: ob-globe-spin 9s linear infinite reverse;
+  animation-delay: -4.5s;
+}
+
+@keyframes ob-globe-spin {
+  0% {
+    transform: scaleX(0.05);
+  }
+  50% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0.05);
+  }
+}
+
+/* Textkarten scrollen an der stehenden Buehne vorbei. */
+.ob-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 60px;
+  pointer-events: none;
+}
+
+.ob-card {
+  max-width: 420px;
+  padding: 22px 24px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--panel-shadow);
+  pointer-events: auto;
+}
+
+.ob-card h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.ob-card p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-body);
+}
+
+.ob-card p:last-child {
+  margin-bottom: 0;
+}
+
+.ob-card em {
+  color: var(--text-soft);
+  font-style: italic;
+}
+
+/* Wer Animationen abgeschaltet hat, bekommt denselben Inhalt ohne
+   Bewegung: Balken und Boegen stehen sofort im Endzustand. */
+@media (prefers-reduced-motion: reduce) {
+  .ob-bar,
+  .ob-arc-example,
+  .ob-arc-rest,
+  .ob-intro {
+    transition: none;
+  }
+  .ob-intro-hint,
+  .ob-root[data-ob-step="8"] .ob-bar,
+  .ob-globe-ball::before,
+  .ob-globe-ball::after {
+    animation: none;
+  }
+  .ob-pin,
+  .ob-combo,
+  .ob-globe {
+    transition: none;
+  }
+}
+
+.info-panel-content {
+  max-width: 640px;
+}
+
+.info-panel-content h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0 0 14px;
+  color: var(--text-heading);
+}
+
+.info-panel-content h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 28px 0 8px;
+  color: var(--text-heading);
+}
+
+.info-panel-content p {
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0 0 4px;
+  color: var(--text-body);
+}
+
+.info-panel-content ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.info-panel-content li {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-body);
+  margin-bottom: 4px;
+}
+
+#bible-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  padding: var(--bible-padding) 30px 0;
+  transform-origin: 0 0;
+}
+
+/* Sitzt jetzt an der Oberkante des Info-Bereich-Overlays (statt als
+   Flex-Geschwister zwischen Canvas und Info-Bereich) und verschiebt beim
+   Ziehen direkt dessen Hoehe (--lower-pane-height) - siehe panelDivider.js-
+   Teil in script.js. transform:translateY(50%) laesst den Griff genau auf
+   der Kante "reiten" (halb im Canvas, halb im Info-Bereich).
+
+   Die geschlossene Grundstellung addiert zu diesen 50% zusaetzlich die
+   VOLLE --lower-pane-height als Verschiebung nach unten - dieselbe
+   absolute Strecke, um die sich .lower-pane per translateY(100%) aus dem
+   Sichtbereich bewegt (100% seiner Hoehe = --lower-pane-height in Px).
+   .is-open nimmt diese Zusatzverschiebung wieder weg. Dadurch "klebt" der
+   Trenner waehrend der GESAMTEN Auf-/Zufahr-Animation exakt an der
+   Oberkante des Info-Bereichs, statt (wie zuvor, als nur [hidden]
+   umgeschaltet wurde) sofort starr auf der Zielposition zu erscheinen
+   bzw. bis zum Animationsende dort stehen zu bleiben - genau das erzeugte
+   das kurz sichtbare "freischwebende Linie"-Artefakt kurz vor dem
+   vollstaendigen Auffahren bzw. kurz nach dem Zufahren. Waehrend eines
+   laufenden Drags aendert sich nur --lower-pane-height, NICHT die
+   Transform-Formel selbst (im offenen .is-open-Zustand ist sie mit
+   translateY(50%) konstant) - die Transition greift also ausschliesslich
+   beim Oeffnen/Schliessen, nie waehrend des Ziehens. */
+.panel-divider {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  bottom: var(--lower-pane-height);
+  transform: translateY(calc(50% + var(--lower-pane-height)));
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  height: var(--divider-height);
+  z-index: 9;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-divider.is-open {
+  transform: translateY(50%);
+}
+
+.panel-divider[hidden] {
+  display: none;
+}
+
+.panel-divider::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border-color);
+  transform: translateY(-50%);
+  transition: background 0.15s ease;
+}
+
+.panel-divider-grip {
+  position: relative;
+  display: flex;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  transition: border-color 0.15s ease, color 0.15s ease,
+    background-color 0.25s ease;
+}
+
+.panel-divider:hover::before,
+.panel-divider.dragging::before {
+  background: #c9c9c9;
+}
+
+.panel-divider:hover .panel-divider-grip,
+.panel-divider.dragging .panel-divider-grip {
+  border-color: #c9c9c9;
+  color: var(--text-body);
+}
+
+/* Eigenstaendiges OVERLAY ueber dem Canvas statt Flex-Geschwister daneben.
+   position:absolute + bottom:0 heisst: der Info-Bereich nimmt dem Canvas
+   keinen Platz mehr additiv weg (und umgekehrt) - beide Hoehen werden
+   unabhaengig voneinander berechnet (siehe script.js) und duerfen sich
+   bewusst ueberlappen (das Overlay liegt einfach ueber dem unteren Teil
+   des Canvas). Weil position:absolute aus dem normalen Fluss herausnimmt,
+   kann der Info-Bereich die Panel- oder Seitenhoehe auch nicht mehr
+   sprengen - die "nie ueber die Fensterhoehe hinauswachsen"-Garantie
+   bleibt dadurch sogar robuster erhalten als vorher.
+
+   transform (statt z.B. height) wird fuers Ein-/Ausfahren animiert: im
+   geschlossenen Grundzustand um die eigene Hoehe nach unten verschoben
+   (unsichtbar unterhalb der Panel-Unterkante), in .is-open bei 0 (normale
+   Position) - siehe openLowerPane()/closeLowerPane() in script.js. */
+.lower-pane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--lower-pane-height);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--panel-shadow);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(100%);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.lower-pane.is-open {
+  transform: translateY(0);
+}
+
+.lower-pane[hidden] {
+  display: none;
+}
+
+.reference-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 30px;
+  flex: 0 0 auto;
+  position: relative;
+}
+
+.reference-strip-chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.reference-strip.expanded .reference-strip-chips {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.reference-strip-label {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin-right: 4px;
+  flex: 0 0 auto;
+}
+
+.reference-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+  background: var(--bg-surface);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  transition: border-color 0.15s ease, color 0.15s ease,
+    background-color 0.25s ease;
+}
+
+.reference-chip:hover {
+  border-color: #c9c9c9;
+  color: var(--text-body);
+}
+
+/* Bleibt markiert, solange dieser Querverweis "aktiv" ist (zuletzt
+   angeklickt), bis der Reset-Button (Kreuz) gedrueckt wird - siehe
+   activeReference in script.js. Nutzt jetzt dieselbe --accent-Variable
+   wie Balken und Boegen statt einer eigenen, isolierten Rot-Angabe. */
+.reference-chip.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.reference-chip.is-active .arrow {
+  color: var(--accent);
+}
+
+.reference-chip .arrow {
+  color: var(--text-muted);
+}
+
+.reference-strip-more {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-muted);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.reference-strip-more.visible {
+  display: flex;
+}
+
+.reference-strip.expanded .reference-strip-more svg {
+  transform: rotate(45deg);
+}
+
+.content-area {
+  flex: 1 1 0px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 30px 36px;
+}
+
+.content-area[hidden] {
+  display: none;
+}
+
+.chapter-text h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0 0 18px;
+  color: var(--text-heading);
+}
+
+.chapter-text p {
+  font-size: 16px;
+  line-height: 1.7;
+  margin: 0 0 16px;
+  color: var(--text-body);
+}
+
+.chapter-text strong {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+/* Vers, der per Suche gezielt angesprungen wurde - dieselbe gepunktete
+   Unterstreichung wie .split-side .highlighted weiter unten (bewusst
+   dieselbe Behandlung wie bei Querverweis-Versen, s. Anfrage), nicht die
+   fruehere gelbe Hintergrundfarbe. */
+.chapter-text .highlighted {
+  color: var(--text-soft);
+  text-decoration: underline dotted var(--text-muted);
+}
+
+/* Name einer angepinnten Person, markiert innerhalb des Kapiteltexts (s.
+   renderChapterText/highlightPersonName in script.js) - Basis-Look plus
+   vier farbige Varianten (.person-name-pill-1..4), die exakt dieselben
+   Pin-Farben nutzen wie .word-list-item.is-pin-color-N in der Word-Box:
+   die Markierung im Text soll als "das ist DIESE angepinnte Person"
+   erkennbar sein, in ihrer eigenen Farbe, nicht als ein einzelnes
+   generisches Signal. */
+.person-name-pill {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+}
+
+.person-name-pill-1 {
+  background: var(--person-color-1-bg);
+  color: var(--person-color-1);
+}
+.person-name-pill-2 {
+  background: var(--person-color-2-bg);
+  color: var(--person-color-2);
+}
+.person-name-pill-3 {
+  background: var(--person-color-3-bg);
+  color: var(--person-color-3);
+}
+.person-name-pill-4 {
+  background: var(--person-color-4-bg);
+  color: var(--person-color-4);
+}
+
+.split-view {
+  flex: 1 1 0px;
+  min-height: 0;
+  display: flex;
+  gap: 0;
+}
+
+.split-view[hidden] {
+  display: none;
+}
+
+.split-side {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 30px 36px;
+}
+
+.split-side + .split-side {
+  border-left: 1px solid var(--border-color);
+}
+
+.split-side h3 {
+  font-size: 15px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin: 0 0 18px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-surface);
+  padding: 16px 0 8px;
+  margin-left: -30px;
+  margin-right: -30px;
+  padding-left: 30px;
+  padding-right: 30px;
+  transition: background-color 0.25s ease;
+}
+
+.split-side p {
+  font-size: 16px;
+  line-height: 1.7;
+  margin: 0 0 14px;
+  color: var(--text-body);
+}
+
+.split-side strong {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.split-side .highlighted {
+  color: var(--text-soft);
+  text-decoration: underline dotted var(--text-muted);
+}
+
+.chapter-bar {
+  width: var(--bar-width);
+  flex-shrink: 0;
+  border-radius: 2px;
+  transition: background 0.2s ease, opacity 0.2s ease;
+  align-self: flex-start;
+}
+
+.chapter-bar.color-a {
+  background: var(--color-a);
+}
+
+.chapter-bar.color-b {
+  background: var(--color-b);
+}
+
+/* Markiert das aktuell GEOEFFNETE Kapitel bzw. die Quelle/das Ziel des
+   aktiven Querverweises (activeChapterKey/activeReference in script.js).
+   Bewusst ein OUTLINE statt (wie frueher) einer Hintergrundfarbe: die
+   Personen-Faerbung unten (.is-person-active) setzt ihre Farbe ueber
+   INLINE style (--person-bg), und Inline-Styles gewinnen in CSS IMMER
+   gegen Klassen-Regeln, egal welche Spezifitaet - ein Hintergrund-basiertes
+   .is-active wuerde also entweder von der Personen-Farbe verdeckt (falsche
+   Reihenfolge) oder sie selbst verdecken (richtige Reihenfolge), so oder
+   so waere IMMER nur eines der beiden Signale sichtbar. Ein Outline ist
+   ein komplett ANDERES CSS-Property und kann daher unabhaengig von jeder
+   Hintergrundfarbe (Personen-Faerbung, Buch-Alternation, Hover) gleich-
+   zeitig sichtbar bleiben. */
+.chapter-bar.is-active {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ---- Personen-Highlight (Word-Explorer) ----------------------------
+   Getrennt von .is-active (Kapitel-/Querverweis-Auswahl, s.o.): wird
+   gesetzt, sobald in der Sidebar mindestens eine Person angepinnt ist.
+   .is-person-active liest die Hintergrundfarbe aus der CSS-Variable
+   --person-bg, die script.js PRO BALKEN per style.setProperty setzt
+   (Einzelfarbe des angepinnten Slots oder - bei Ueberlappung mehrerer
+   angepinnter Personen im selben Kapitel - die per multiplyBlendColors()
+   gemischte Farbe, s. updatePersonHighlight). .is-person-dimmed blendet
+   alle nicht betroffenen Balken zurueck (Opacity, keine Hintergrund-
+   Aenderung - die urspruengliche Buch-Alternation bleibt darunter sichtbar,
+   nur schwaecher).
+   WICHTIG: --person-bg wird bewusst NICHT direkt als `background` gesetzt
+   (s. Kommentar bei .is-active oben) - die bestehenden Hover-Handler in
+   script.js setzen bei mouseenter/mouseleave `bar.style.background`
+   direkt (fuer den kurzen Rot-Flash beim Ueberfahren) und wuerden eine
+   dort gesetzte Hintergrundfarbe beim Verlassen unbeabsichtigt wieder
+   loeschen. Da diese Handler NUR `background` anfassen, NIE `--person-bg`,
+   bleibt die Personenfarbe beim Verlassen des Hovers zuverlaessig
+   erhalten - der Hover-Flash gewinnt kurzzeitig (Inline `background`
+   schlaegt die CSS-Regel, die selbst nur `var(--person-bg)` referenziert),
+   und nach dem Zuruecksetzen auf "" greift automatisch wieder diese Regel. */
+.chapter-bar.is-person-active {
+  background: var(--person-bg, var(--accent));
+  opacity: 1;
+}
+
+.chapter-bar.is-person-dimmed {
+  opacity: 0.15;
+}
+
+.chapter-bar:hover {
+  background: var(--accent);
+}
+
+/* Sichtbarer Fokus-Ring fuer Tastaturbedienung (Tab) - vorher fehlte das
+   auf allen runden/pillenfoermigen Buttons komplett. Ein einzelner
+   :focus-visible-Ring statt individuellem Styling pro Button, gruppiert
+   ueber alle betroffenen Klassen. */
+.icon-button:focus-visible,
+.sidebar-toggle:focus-visible,
+.sidebar-search-button:focus-visible,
+.reset-button:focus-visible,
+.reference-chip:focus-visible,
+.profile-avatar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
