@@ -1069,6 +1069,226 @@ body.is-panning-vis {
   padding: 24px 8px;
 }
 
+/* ---- "Wörter speichern" (Fuss der Wordbox) -------------------------- */
+.word-save {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  color: var(--text-body);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.word-save:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+/* Ohne Pins gibt es nichts zu speichern - der Button bleibt dann sichtbar,
+   aber erkennbar inaktiv, statt zu verschwinden (sonst springt das Layout
+   beim ersten Pin). */
+.word-save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.word-save:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- Profil-Fenster -------------------------------------------------- */
+.profile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(20, 20, 22, 0.28);
+  /* Der unscharfe Hintergrund laesst die Visualisierung durchscheinen -
+     man verliert den Kontext nicht, waehrend man eine Kombination
+     auswaehlt. */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.profile-overlay[hidden] {
+  display: none;
+}
+
+.profile-dialog {
+  width: min(560px, 100%);
+  max-height: min(620px, 90vh);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 14px;
+}
+
+.profile-header h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.profile-close {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.profile-close:hover {
+  border-color: #c9c9c9;
+  color: var(--text-body);
+}
+
+.profile-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 22px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-empty {
+  padding: 28px 4px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.profile-set {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  transition: border-color 0.15s ease;
+}
+
+.profile-set:hover {
+  border-color: #c9c9c9;
+}
+
+.profile-set-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-set-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-set-meta {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Farbpunkte in der Slot-Reihenfolge - dieselbe Zuordnung wie beim
+   Anpinnen, dadurch erkennt man ein Set schon an den Farben wieder. */
+.profile-set-dots {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.profile-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.profile-set-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.profile-btn,
+.profile-set-btn {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.profile-btn:hover,
+.profile-set-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.profile-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--border-color);
+}
+
+.profile-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.profile-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .sidebar-placeholder {
   color: var(--text-muted);
   font-size: 13px;
@@ -2054,7 +2274,8 @@ body.is-panning-vis {
   right: 30px;
   bottom: var(--lower-pane-height);
   transform: translateY(calc(50% + var(--lower-pane-height)));
-  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    bottom 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   height: var(--divider-height);
   z-index: 9;
   cursor: row-resize;
@@ -2069,6 +2290,39 @@ body.is-panning-vis {
 
 .panel-divider[hidden] {
   display: none;
+}
+
+.panel-divider.is-dragging-now {
+  transition: none;
+}
+
+/* Ist der Textbereich ganz nach unten gefahren, ist der Trenner das
+   EINZIGE, was von ihm noch zu sehen ist - er muss dann deutlich genug
+   sein, dass er nicht uebersehen wird. Griff in der Akzentfarbe mit Ring,
+   statt wie sonst nur dezent mitzulaufen. */
+/* Bei eingefahrenem Textbereich liegt der Trenner sonst genau auf der
+   Panel-Unterkante und wird durch deren overflow:hidden zur Haelfte
+   abgeschnitten - ausgerechnet dann, wenn er das einzige Bedienelement
+   ist. Deshalb hier nach oben versetzt, statt wie sonst auf der Kante zu
+   "reiten". */
+.panel-divider.is-open.is-collapsed {
+  transform: translateY(-18px);
+}
+
+.panel-divider.is-collapsed .panel-divider-grip {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+  padding: 4px 16px;
+  box-shadow: 0 0 0 4px var(--accent-bg);
+}
+
+/* Im eingefahrenen Zustand ohne Linie: sie liegt dann auf Hoehe der
+   Fusszeile und schnitte quer durch das "Zürcher Bibel 1931"-Label. Der
+   Griff allein genuegt hier - er traegt durch seine Akzentfarbe ohnehin
+   die ganze Aufmerksamkeit. */
+.panel-divider.is-collapsed::before {
+  opacity: 0;
 }
 
 .panel-divider::before {
@@ -2135,8 +2389,20 @@ body.is-panning-vis {
   flex-direction: column;
   overflow: hidden;
   transform: translateY(100%);
+  /* height mitanimieren: der Bereich faehrt beim Oeffnen einer Kapitel-
+     oder Querverweis-Ansicht auf die Standardhoehe zurueck (s.
+     openChapterView/selectCrossReference) - ohne Uebergang waere das ein
+     harter Sprung. */
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 0.25s ease, border-color 0.25s ease;
+    height 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+/* Waehrend des Ziehens darf die Hoehe NICHT animiert werden - sie aendert
+   sich dann mehrfach pro Sekunde und liefe dem Zeiger sichtbar hinterher
+   (gleiche Ueberlegung wie bei .canvas-footer.is-dragging). */
+.lower-pane.is-dragging {
+  transition: none;
 }
 
 .lower-pane.is-open {

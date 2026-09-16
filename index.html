@@ -43,7 +43,7 @@
          uebernimmt init() am Ende (s. hideAppLoader). -->
     <div class="app-loader" id="app-loader">
       <div class="app-loader-inner">
-<!-- Die Bogenform kommt zurueck aus SVG: nur so laufen die Enden
+        <!-- Die Bogenform kommt zurueck aus SVG: nur so laufen die Enden
              wie in der echten Visualisierung auf eine gemeinsame
              Grundlinie zu. Ein Zwischenversuch mit CSS-Kreisausschnitten
              ergab konzentrische Kappen, die eher an ein WLAN-Symbol
@@ -294,13 +294,40 @@
                 title="Suche löschen"
                 hidden
               >
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="12"
+                  height="12"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                >
                   <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
                 </svg>
               </button>
             </div>
 
             <div class="word-list" id="word-list"></div>
+
+            <!-- Speichert die aktuelle Pin-Kombination. Nur aktiv, wenn
+                 ueberhaupt etwas angepinnt ist (s. wireSavedSets). -->
+            <button class="word-save" id="word-save" type="button" disabled>
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path
+                  d="M6 4h9l4 4v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"
+                  stroke-linejoin="round"
+                />
+                <path d="M9 4v5h6" stroke-linejoin="round" />
+              </svg>
+              <span id="word-save-label">Wörter speichern</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -352,8 +379,19 @@
                   <span class="ob-intro-title">Bible Explorer</span>
                   <span class="ob-intro-hint">
                     Scrollen
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 5v14M6 13l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M12 5v14M6 13l6 6 6-6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
                     </svg>
                   </span>
                 </div>
@@ -377,9 +415,9 @@
                   <h3>Jedes Kapitel ein Balken</h3>
                   <p>
                     Die Zürcher Bibel 1931 umfasst 66 Bücher mit insgesamt 1189
-                    Kapiteln. Hier steht jedes einzelne davon als schmaler Balken –
-                    von Genesis 1 ganz links bis zum letzten Kapitel der
-                    Offenbarung ganz rechts.
+                    Kapiteln. Hier steht jedes einzelne davon als schmaler
+                    Balken – von Genesis 1 ganz links bis zum letzten Kapitel
+                    der Offenbarung ganz rechts.
                   </p>
                 </div>
               </section>
@@ -388,10 +426,10 @@
                 <div class="ob-card">
                   <h3>Die Höhe zeigt die Länge</h3>
                   <p>
-                    Jetzt wächst jeder Balken auf die Anzahl seiner Verse. Psalm 119
-                    ragt mit 176 Versen weit heraus, Psalm 117 bleibt mit zwei
-                    Versen fast unsichtbar. Auf einen Blick wird sichtbar, wie
-                    ungleich die Kapitel verteilt sind.
+                    Jetzt wächst jeder Balken auf die Anzahl seiner Verse. Psalm
+                    119 ragt mit 176 Versen weit heraus, Psalm 117 bleibt mit
+                    zwei Versen fast unsichtbar. Auf einen Blick wird sichtbar,
+                    wie ungleich die Kapitel verteilt sind.
                   </p>
                 </div>
               </section>
@@ -400,14 +438,21 @@
                 <div class="ob-card">
                   <h3>Querverweise verbinden Stellen</h3>
                   <p>
-                    Im Text stehen Fussnoten, die auf verwandte Stellen zeigen. In
-                    Jesaja 54:9 heisst es: <em>„Gleich den Tagen Noahs ist mir diese
-                    Zeit: wie ich geschworen, dass die Wasser Noahs nicht mehr über
-                    die Erde kommen sollen…“</em> – mit einem Verweis auf
-                    Genesis 9:11, wo Gott nach der Sintflut verspricht, dass
+                    Im Text stehen Fussnoten, die auf verwandte Stellen zeigen.
+                    In Jesaja 54:9 heisst es:
+                    <em
+                      >„Gleich den Tagen Noahs ist mir diese Zeit: wie ich
+                      geschworen, dass die Wasser Noahs nicht mehr über die Erde
+                      kommen sollen…“</em
+                    >
+                    – mit einem Verweis auf Genesis 9:11, wo Gott nach der
+                    Sintflut verspricht, dass
                     <em>„niemals wieder eine Sintflut kommen soll“</em>.
                   </p>
-                  <p>Ein solcher Verweis wird als Bogen zwischen beiden Kapiteln gezeichnet.</p>
+                  <p>
+                    Ein solcher Verweis wird als Bogen zwischen beiden Kapiteln
+                    gezeichnet.
+                  </p>
                 </div>
               </section>
 
@@ -415,9 +460,9 @@
                 <div class="ob-card">
                   <h3>Ein ganzes Netz</h3>
                   <p>
-                    So verweist die Bibel tausendfach auf sich selbst. Über 10 000
-                    solcher Verbindungen durchziehen den Text – quer durch die
-                    Bücher, oft über Jahrhunderte der Entstehung hinweg.
+                    So verweist die Bibel tausendfach auf sich selbst. Über 10
+                    000 solcher Verbindungen durchziehen den Text – quer durch
+                    die Bücher, oft über Jahrhunderte der Entstehung hinweg.
                   </p>
                 </div>
               </section>
@@ -427,9 +472,10 @@
                   <h3>Ein anderer Blickwinkel</h3>
                   <p>
                     Dieselben 1189 Kapitel lassen sich auch anders anordnen: als
-                    Raster, in dem jedes Kapitel ein gleich grosses Quadrat ist –
-                    Genesis 1 oben links, das letzte Kapitel der Offenbarung unten
-                    rechts. Oben links in der Ecke wechselst du die Darstellung.
+                    Raster, in dem jedes Kapitel ein gleich grosses Quadrat ist
+                    – Genesis 1 oben links, das letzte Kapitel der Offenbarung
+                    unten rechts. Oben links in der Ecke wechselst du die
+                    Darstellung.
                   </p>
                 </div>
               </section>
@@ -438,9 +484,10 @@
                 <div class="ob-card">
                   <h3>Filtern nach dem, was dich interessiert</h3>
                   <p>
-                    In der linken Box findest du vier Kategorien: <strong>Personen</strong>,
-                    <strong>Orte</strong>, <strong>Zeiten</strong> und <strong>Wörter</strong>.
-                    Was du dort anheftest, färbt genau die Kapitel ein, in denen es
+                    In der linken Box findest du vier Kategorien:
+                    <strong>Personen</strong>, <strong>Orte</strong>,
+                    <strong>Zeiten</strong> und <strong>Wörter</strong>. Was du
+                    dort anheftest, färbt genau die Kapitel ein, in denen es
                     vorkommt.
                   </p>
                 </div>
@@ -450,10 +497,10 @@
                 <div class="ob-card">
                   <h3>Wo sich Dinge treffen</h3>
                   <p>
-                    Bis zu vier Einträge gleichzeitig – jeder bekommt eine eigene
-                    Farbe. Kommen mehrere im selben Kapitel vor, mischen sich ihre
-                    Farben zu einem dunkleren Ton. So springen genau die Stellen
-                    ins Auge, an denen sich mehrere Spuren kreuzen.
+                    Bis zu vier Einträge gleichzeitig – jeder bekommt eine
+                    eigene Farbe. Kommen mehrere im selben Kapitel vor, mischen
+                    sich ihre Farben zu einem dunkleren Ton. So springen genau
+                    die Stellen ins Auge, an denen sich mehrere Spuren kreuzen.
                   </p>
                 </div>
               </section>
@@ -626,6 +673,62 @@
           </div>
         </div>
       </main>
+    </div>
+
+    <!-- ============ PROFIL / GESPEICHERTE KOMBINATIONEN ============
+         Zentriertes Fenster ueber unscharfem Hintergrund. Die
+         Kombinationen liegen im localStorage des Browsers - bewusst ohne
+         Konto und ohne Server (s. createSavedSets in script.js). -->
+    <div class="profile-overlay" id="profile-overlay" hidden>
+      <div
+        class="profile-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-title"
+      >
+        <div class="profile-header">
+          <h2 id="profile-title">Gespeicherte Kombinationen</h2>
+          <button
+            class="profile-close"
+            id="profile-close"
+            type="button"
+            title="Schliessen"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="profile-body" id="profile-body"></div>
+
+        <div class="profile-footer">
+          <span class="profile-hint" id="profile-hint">
+            Gespeichert wird nur in diesem Browser.
+          </span>
+          <div class="profile-actions">
+            <button class="profile-btn" id="profile-export" type="button">
+              Exportieren
+            </button>
+            <button class="profile-btn" id="profile-import" type="button">
+              Importieren
+            </button>
+            <input
+              type="file"
+              id="profile-import-file"
+              accept="application/json"
+              hidden
+            />
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="script.js"></script>

@@ -5023,6 +5023,75 @@ function createOnboarding({
 }
 
 // ========================================================================
+// savedSets.js — gespeicherte Pin-Kombinationen
+// ========================================================================
+// ABSICHTLICH EINE SCHMALE SCHNITTSTELLE: list/save/remove/replaceAll.
+// Die Ablage passiert heute im localStorage des Browsers - ohne Konto,
+// ohne Server, ohne Anmeldung. Das deckt den praktischen Nutzen fast
+// vollstaendig ab; der einzige echte Verlust ist, dass die Sets an Browser
+// und Geraet gebunden sind (dagegen hilft der Teilen-Link, der den
+// vorhandenen URL-Zustand nutzt, sowie Export/Import).
+//
+// Sollte spaeter doch ein Konto dazukommen (z. B. ueber einen
+// Backend-as-a-Service), muss NUR dieses Modul ausgetauscht werden - die
+// Oberflaeche spricht ausschliesslich mit diesen vier Funktionen und kennt
+// die Ablage nicht.
+
+const SAVED_SETS_STORAGE_KEY = "bible-explorer-saved-sets";
+
+function createSavedSets() {
+  function readAll() {
+    try {
+      const raw = localStorage.getItem(SAVED_SETS_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      // Defektes oder gesperrtes localStorage (z. B. privater Modus) darf
+      // die App nicht lahmlegen - dann gibt es eben keine Sets.
+      console.warn("Gespeicherte Kombinationen nicht lesbar:", e);
+      return [];
+    }
+  }
+
+  function writeAll(sets) {
+    try {
+      localStorage.setItem(SAVED_SETS_STORAGE_KEY, JSON.stringify(sets));
+      return true;
+    } catch (e) {
+      console.warn("Kombination konnte nicht gespeichert werden:", e);
+      return false;
+    }
+  }
+
+  return {
+    list() {
+      return readAll();
+    },
+    /** `pins` ist die Liste aus wordExplorerApi.getState() - {category, id}
+     * in Slot-Reihenfolge, die ja die Farbzuordnung bestimmt. */
+    save({ name, pins }) {
+      const sets = readAll();
+      sets.unshift({
+        id: `s${Date.now().toString(36)}`,
+        name,
+        pins,
+        createdAt: new Date().toISOString(),
+      });
+      return writeAll(sets) ? sets : null;
+    },
+    remove(id) {
+      const sets = readAll().filter((set) => set.id !== id);
+      writeAll(sets);
+      return sets;
+    },
+    /** Fuer den Import: ersetzt den gesamten Bestand. */
+    replaceAll(sets) {
+      return writeAll(sets) ? sets : null;
+    },
+  };
+}
+
+// ========================================================================
 // main.js — Orchestrierung
 // ========================================================================
 
@@ -5431,6 +5500,69 @@ async function init() {
     layout.reset();
   }
 
+  // Ab dieser Hoehe (px) gilt der Textbereich als "ganz unten": dann ist
+  // nur noch der Trenner sichtbar und bekommt seine auffaellige Optik.
+  const LOWER_PANE_COLLAPSED_THRESHOLD = 28;
+
+  function currentLowerPaneHeight() {
+    return (
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--lower-pane-height"
+        )
+      ) || 0
+    );
+  }
+
+  /** Markiert den Trenner, sobald der Textbereich eingefahren ist (s.
+   * .panel-divider.is-collapsed in style.css). */
+  function updateDividerCollapsedState() {
+    panelDivider.classList.toggle(
+      "is-collapsed",
+      currentLowerPaneHeight() <= LOWER_PANE_COLLAPSED_THRESHOLD
+    );
+  }
+
+  function setLowerPaneHeight(px) {
+    document.documentElement.style.setProperty(
+      "--lower-pane-height",
+      `${Math.round(px)}px`
+    );
+    updateDividerCollapsedState();
+  }
+
+  /**
+   * Faehrt den Textbereich auf seine Standardhoehe (halbe Panel-Hoehe).
+   * Wird bei JEDER Auswahl eines Kapitels oder Querverweises aufgerufen -
+   * auch wenn der Bereich schon offen ist und zuvor per Trenner verschoben
+   * wurde. Gedanke dahinter: die Auswahl ist eine bewusste Lese-Absicht,
+   * der Text soll dann verlaesslich gleich gross erscheinen, statt in
+   * einer womoeglich zugeschobenen Position hervorzukommen.
+   */
+  function restoreDefaultLowerPaneHeight() {
+    userHasManuallyResizedLowerPane = false;
+    const { panelHeight } = currentCanvasLayout();
+    setLowerPaneHeight(computeLowerPaneHeight(panelHeight));
+  }
+
+  /**
+   * Doppelklick auf den Trenner: faehrt den Textbereich ganz nach unten
+   * bzw. wieder auf die Standardhoehe zurueck. Schneller als das Ziehen
+   * ueber die volle Strecke, wenn man nur kurz die ganze Visualisierung
+   * sehen will.
+   */
+  function toggleLowerPaneCollapsed() {
+    if (currentLowerPaneHeight() > LOWER_PANE_COLLAPSED_THRESHOLD) {
+      userHasManuallyResizedLowerPane = true;
+      setLowerPaneHeight(0);
+    } else {
+      restoreDefaultLowerPaneHeight();
+    }
+    requestAnimationFrame(() => redrawArcsRef());
+  }
+
+  panelDivider.addEventListener("dblclick", toggleLowerPaneCollapsed);
+
   function performFullReset() {
     // Kommt der Klick aus der Info-Ansicht, ist er als "zurueck zur
     // Visualisierung" gemeint, nicht als "alles verwerfen".
@@ -5466,6 +5598,10 @@ async function init() {
     panelEl: visualizerPanelEl,
     onDragStart: () => {
       userHasManuallyResizedLowerPane = true;
+      // Waehrend des Ziehens alle hoehenabhaengigen Uebergaenge aussetzen,
+      // sonst laufen Textbereich und Trenner dem Zeiger hinterher.
+      lowerPane.classList.add("is-dragging");
+      panelDivider.classList.add("is-dragging-now");
       // Die Transform-Formel des Titels (.canvas-footer.is-open) haengt
       // direkt von --lower-pane-height ab, das sich waehrend des Drags
       // laufend aendert. Mit aktiver Transition wuerde der Titel dem
@@ -5481,8 +5617,13 @@ async function init() {
     },
     onDragEnd: () => {
       canvasFooterEl.classList.remove("is-dragging");
+      lowerPane.classList.remove("is-dragging");
+      panelDivider.classList.remove("is-dragging-now");
     },
-    onResize: () => redrawArcsRef(),
+    onResize: () => {
+      updateDividerCollapsedState();
+      redrawArcsRef();
+    },
   });
 
   // redrawArcsRef() als onZoomChange-Callback: sobald sich Skalierung
@@ -5878,6 +6019,10 @@ async function init() {
     });
     updatePersonHighlight();
     refreshOpenTextView();
+    // Der Speichern-Button haengt am Pin-Zustand (s. wireSavedSets). Ein
+    // Event statt eines direkten Aufrufs, damit main.js nichts ueber die
+    // Speicher-Oberflaeche wissen muss.
+    document.dispatchEvent(new CustomEvent("pins-changed"));
     // Pins sind Teil des teilbaren Zustands (s. writeUrlState). Dieser
     // Aufruf fehlte: Pin-Aenderungen landeten dadurch nur dann in der URL,
     // wenn zufaellig ein ANDERES Ereignis (Tab-/Modus-Wechsel, Kapitel
@@ -6180,6 +6325,7 @@ async function init() {
    * Chip-Klick in derselben Leiste korrekt nachzieht.
    */
   function selectCrossReference(source, target, stripChapter) {
+    restoreDefaultLowerPaneHeight();
     activeChapterKey = null;
     activeReference = { source, target };
     updateActiveBars();
@@ -6287,6 +6433,7 @@ async function init() {
    * markieren (s. renderChapterText).
    */
   function openChapterView(chapter, focusVerseNumber) {
+    restoreDefaultLowerPaneHeight();
     activeChapterKey = makeChapterKey(chapter.bookName, chapter.chapterNumber);
     activeReference = null;
     updateActiveBars();
@@ -6755,6 +6902,31 @@ async function init() {
     });
   });
 
+  // ---- Gespeicherte Kombinationen ------------------------------------
+  wireSavedSets({
+    store: createSavedSets(),
+    getPins: () => wordExplorerApi.getState().pins,
+    getLabel: (pin) => {
+      const list = categories[pin.category] || [];
+      const entry = list.find((e) => e.id === pin.id);
+      return entry ? entry.name : pin.id.split("@")[0];
+    },
+    buildShareUrl: (pins) => {
+      const encoded = pins
+        .map((p) => `${p.category}:${encodeURIComponent(p.id)}`)
+        .join(",");
+      // Bewusst dasselbe Format wie writeUrlState - ein geteilter Link ist
+      // damit nichts anderes als der normale Zustands-Link der App.
+      return `${location.origin}${location.pathname}#mode=${visMode}&cat=${
+        wordExplorerApi.getState().category
+      }&pins=${encoded}`;
+    },
+    applyPins: async (pins) => {
+      wordExplorerApi.clearPins();
+      await wordExplorerApi.restoreState({ pins });
+    },
+  });
+
   // Ganz zum Schluss: einen ggf. in der URL mitgegebenen Zustand
   // herstellen. Erst hier, weil dafuer ALLES bereitstehen muss - Balken,
   // Grid, Bogen-Overlay, Sidebar und der Vers-Index.
@@ -6939,6 +7111,198 @@ function wireVisModePicker({ onModeChange } = {}) {
 // Dauer EINES Animationszyklus des Ladebildschirms. Muss mit der
 // animation-duration von .app-loader-arc in style.css uebereinstimmen.
 const APP_LOADER_CYCLE_MS = 2600;
+
+/**
+ * Verdrahtet den "Wörter speichern"-Button und das Profil-Fenster.
+ *
+ * Kennt die Ablage NICHT - es spricht ausschliesslich mit `store`
+ * (list/save/remove/replaceAll, s. createSavedSets). Ein spaeterer
+ * Wechsel auf Konten beruehrt diese Funktion nicht.
+ */
+function wireSavedSets({ store, getPins, getLabel, buildShareUrl, applyPins }) {
+  const saveBtn = document.getElementById("word-save");
+  const saveLabel = document.getElementById("word-save-label");
+  const avatarBtn = document.querySelector(".profile-avatar");
+  const overlay = document.getElementById("profile-overlay");
+  const closeBtn = document.getElementById("profile-close");
+  const bodyEl = document.getElementById("profile-body");
+  const exportBtn = document.getElementById("profile-export");
+  const importBtn = document.getElementById("profile-import");
+  const importInput = document.getElementById("profile-import-file");
+
+  /** Haelt den Speichern-Button im Takt mit den Pins: ohne Pins gibt es
+   * nichts zu speichern. Wird aus main.js bei jeder Pin-Aenderung
+   * angestossen (s. onPinsChange) - hier per Intervall-freiem Ansatz ueber
+   * ein eigenes Event, damit dieses Modul nicht in setPinnedEntities
+   * hineingreifen muss. */
+  function syncSaveButton() {
+    saveBtn.disabled = getPins().length === 0;
+  }
+  document.addEventListener("pins-changed", syncSaveButton);
+  syncSaveButton();
+
+  function flashSaveLabel(text) {
+    saveLabel.textContent = text;
+    setTimeout(() => {
+      saveLabel.textContent = "Wörter speichern";
+    }, 1600);
+  }
+
+  saveBtn.addEventListener("click", () => {
+    const pins = getPins();
+    if (pins.length === 0) return;
+    // Name automatisch aus den Pin-Namen: das ist beschreibender als eine
+    // Nummerierung und erspart einen Eingabedialog. Umbenennen laesst sich
+    // ein Set spaeter ueber Loeschen + neu speichern.
+    const name = pins.map(getLabel).join(" · ");
+    const result = store.save({ name, pins });
+    flashSaveLabel(result ? "Gespeichert ✓" : "Nicht gespeichert");
+    if (overlay.hidden === false) renderSets();
+  });
+
+  function renderSets() {
+    const sets = store.list();
+    bodyEl.innerHTML = "";
+
+    if (sets.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "profile-empty";
+      empty.textContent =
+        "Noch nichts gespeichert. Hefte in der linken Box Einträge an und sichere die Kombination über „Wörter speichern“.";
+      bodyEl.appendChild(empty);
+      return;
+    }
+
+    sets.forEach((set) => {
+      const row = document.createElement("div");
+      row.className = "profile-set";
+
+      const dots = document.createElement("div");
+      dots.className = "profile-set-dots";
+      set.pins.forEach((_, i) => {
+        const dot = document.createElement("span");
+        dot.className = "profile-dot";
+        dot.style.background = readPersonColor(i);
+        dots.appendChild(dot);
+      });
+
+      const main = document.createElement("div");
+      main.className = "profile-set-main";
+      const nameEl = document.createElement("div");
+      nameEl.className = "profile-set-name";
+      nameEl.textContent = set.name;
+      const metaEl = document.createElement("div");
+      metaEl.className = "profile-set-meta";
+      const created = new Date(set.createdAt);
+      metaEl.textContent = `${
+        set.pins.length
+      } Einträge · ${created.toLocaleDateString("de-CH")}`;
+      main.append(nameEl, metaEl);
+
+      const actions = document.createElement("div");
+      actions.className = "profile-set-actions";
+
+      const loadBtn = document.createElement("button");
+      loadBtn.type = "button";
+      loadBtn.className = "profile-set-btn";
+      loadBtn.textContent = "Laden";
+      loadBtn.addEventListener("click", async () => {
+        loadBtn.textContent = "…";
+        await applyPins(set.pins);
+        closeDialog();
+      });
+
+      const shareBtn = document.createElement("button");
+      shareBtn.type = "button";
+      shareBtn.className = "profile-set-btn";
+      shareBtn.textContent = "Link";
+      shareBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(buildShareUrl(set.pins));
+          shareBtn.textContent = "Kopiert ✓";
+        } catch (e) {
+          // Zwischenablage kann blockiert sein (kein HTTPS, verweigerte
+          // Berechtigung) - dann bleibt der Export als Weg.
+          shareBtn.textContent = "Nicht möglich";
+        }
+        setTimeout(() => {
+          shareBtn.textContent = "Link";
+        }, 1600);
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "profile-set-btn";
+      delBtn.textContent = "Löschen";
+      delBtn.addEventListener("click", () => {
+        store.remove(set.id);
+        renderSets();
+      });
+
+      actions.append(loadBtn, shareBtn, delBtn);
+      row.append(dots, main, actions);
+      bodyEl.appendChild(row);
+    });
+  }
+
+  function openDialog() {
+    renderSets();
+    overlay.hidden = false;
+    document.addEventListener("keydown", onKeyDown);
+  }
+
+  function closeDialog() {
+    overlay.hidden = true;
+    document.removeEventListener("keydown", onKeyDown);
+  }
+
+  function onKeyDown(e) {
+    if (e.key === "Escape") closeDialog();
+  }
+
+  avatarBtn.addEventListener("click", openDialog);
+  closeBtn.addEventListener("click", closeDialog);
+  overlay.addEventListener("click", (e) => {
+    // Nur ein Klick auf den Hintergrund schliesst - nicht einer im Fenster.
+    if (e.target === overlay) closeDialog();
+  });
+
+  // ---- Export / Import -------------------------------------------------
+  // Der Ersatz fuer ein Konto, wenn die Sets auf ein anderes Geraet
+  // sollen: eine kleine JSON-Datei, die sich auch als Sicherung eignet.
+  exportBtn.addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(store.list(), null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "bible-explorer-kombinationen.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  importBtn.addEventListener("click", () => importInput.click());
+  importInput.addEventListener("change", async () => {
+    const file = importInput.files && importInput.files[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!Array.isArray(parsed)) throw new Error("Unerwartetes Format");
+      // Bestehende Sets bleiben erhalten - ein Import soll nichts
+      // ueberschreiben, was der Nutzer hier schon gesammelt hat.
+      store.replaceAll([...parsed, ...store.list()]);
+      renderSets();
+    } catch (e) {
+      console.warn("Import fehlgeschlagen:", e);
+      bodyEl.insertAdjacentHTML(
+        "afterbegin",
+        '<p class="profile-empty">Datei konnte nicht gelesen werden.</p>'
+      );
+    }
+    importInput.value = "";
+  });
+}
 
 /**
  * Blendet den Ladebildschirm aus - immer an einer ZYKLUSGRENZE der
