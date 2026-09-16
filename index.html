@@ -36,6 +36,45 @@
     <script src="maplibre-gl.js"></script>
   </head>
   <body>
+    <!-- ============ HINWEIS AUF KLEINEN BILDSCHIRMEN ============
+         Der Explorer ist auf breite Fenster ausgelegt: 1189 Kapitel
+         nebeneinander, eine Sidebar daneben und ein Textbereich darunter
+         brauchen Platz. Statt auf kleinen Geraeten etwas Unbrauchbares zu
+         zeigen, gibt es diesen Hinweis - mit der Moeglichkeit, trotzdem
+         fortzufahren. Sichtbarkeit steuert allein CSS (Media Query). -->
+    <div class="mobile-notice" id="mobile-notice">
+      <div class="mobile-notice-inner">
+        <svg
+          viewBox="0 0 24 24"
+          width="28"
+          height="28"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <rect x="3.5" y="5" width="17" height="12" rx="1.5" />
+          <path d="M8 20h8" stroke-linecap="round" />
+        </svg>
+        <h2>Besser am grossen Bildschirm</h2>
+        <p>
+          Der Bible Explorer ist noch nicht für mobile Geräte ausgelegt. Die
+          Visualisierung stellt alle 1189 Kapitel nebeneinander dar und braucht
+          dafür ein breites Fenster.
+        </p>
+        <p class="mobile-notice-sub">
+          Am Computer oder Tablet im Querformat kommt sie deutlich besser zur
+          Geltung.
+        </p>
+        <button
+          class="mobile-notice-btn"
+          id="mobile-notice-dismiss"
+          type="button"
+        >
+          Trotzdem fortfahren
+        </button>
+      </div>
+    </div>
+
     <!-- ============ LADEBILDSCHIRM ============
          Steht bewusst direkt im HTML (nicht per JS erzeugt): so ist er
          schon sichtbar, BEVOR script.js ueberhaupt geladen ist - genau

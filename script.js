@@ -7112,6 +7112,17 @@ function wireVisModePicker({ onModeChange } = {}) {
 // animation-duration von .app-loader-arc in style.css uebereinstimmen.
 const APP_LOADER_CYCLE_MS = 2600;
 
+// Der Hinweis auf kleinen Bildschirmen laesst sich wegklicken - wer
+// trotzdem schauen will, soll das koennen. Die Entscheidung gilt fuer die
+// laufende Sitzung; ein Reload zeigt den Hinweis wieder, da er ja auf ein
+// echtes Nutzungsproblem hinweist und nicht bloss eine Werbung ist.
+(function wireMobileNotice() {
+  const notice = document.getElementById("mobile-notice");
+  const dismiss = document.getElementById("mobile-notice-dismiss");
+  if (!notice || !dismiss) return;
+  dismiss.addEventListener("click", () => notice.classList.add("is-dismissed"));
+})();
+
 /**
  * Verdrahtet den "Wörter speichern"-Button und das Profil-Fenster.
  *
